@@ -37,10 +37,8 @@ const categoryData = mockCategories.map((cat, i) => ({
 }));
 
 const paymentData = [
-  { name: 'เงินสด', value: 45, color: '#10B981' },
-  { name: 'โอนเงิน', value: 30, color: '#3B82F6' },
-  { name: 'บัตรเครดิต', value: 18, color: '#8B5CF6' },
-  { name: 'PromptPay', value: 7, color: '#F59E0B' },
+  { name: 'เงินสด', value: 56, color: '#10B981' },
+  { name: 'โอนเงิน', value: 44, color: '#3B82F6' },
 ];
 
 export default function Reports() {
