@@ -68,6 +68,32 @@ export default function POS() {
   const total = getTotal();
   const change = amountReceived - total;
 
+  // Calculate sales by category
+  const salesByCategory = useMemo(() => {
+    const categoryTotals: Record<string, { name: string; color: string; amount: number; quantity: number }> = {};
+    
+    cart.forEach((item) => {
+      const category = mockCategories.find((c) => c.id === item.product.categoryId);
+      const categoryId = category?.id || 'uncategorized';
+      const categoryName = category?.name || 'ไม่มีหมวดหมู่';
+      const categoryColor = category?.color || '#6B7280';
+      
+      if (!categoryTotals[categoryId]) {
+        categoryTotals[categoryId] = { name: categoryName, color: categoryColor, amount: 0, quantity: 0 };
+      }
+      
+      const itemTotal = item.product.price * item.quantity;
+      const itemDiscount = item.discountType === 'percent'
+        ? itemTotal * (item.discount / 100)
+        : item.discount;
+      
+      categoryTotals[categoryId].amount += itemTotal - itemDiscount;
+      categoryTotals[categoryId].quantity += item.quantity;
+    });
+    
+    return Object.entries(categoryTotals).sort((a, b) => b[1].amount - a[1].amount);
+  }, [cart]);
+
   const handleCheckout = () => {
     if (cart.length === 0) {
       toast.error('กรุณาเพิ่มสินค้าในตะกร้า');
@@ -385,6 +411,35 @@ export default function POS() {
                 ฿{formatCurrency(total)}
               </p>
             </div>
+
+            {/* Sales by Category */}
+            {salesByCategory.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">ยอดขายแยกตามหมวดหมู่</p>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {salesByCategory.map(([categoryId, data]) => (
+                    <div
+                      key={categoryId}
+                      className="flex items-center justify-between p-2 rounded-lg bg-muted/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: data.color }}
+                        />
+                        <span className="text-sm">{data.name}</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {data.quantity} ชิ้น
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold">
+                        ฿{formatCurrency(data.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Payment Methods */}
             <div className="grid grid-cols-2 gap-2">
