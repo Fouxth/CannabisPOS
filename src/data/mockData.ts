@@ -26,10 +26,14 @@ export const mockProducts: Product[] = [
 
 export const mockPaymentMethods: PaymentMethod[] = [
   { id: '1', name: 'เงินสด', nameEn: 'Cash', type: 'cash', icon: 'Banknote', isActive: true, isDefault: true },
-  { id: '2', name: 'บัตรเครดิต/เดบิต', nameEn: 'Card', type: 'card', icon: 'CreditCard', isActive: true, isDefault: false },
-  { id: '3', name: 'โอนเงิน', nameEn: 'Transfer', type: 'transfer', icon: 'ArrowRightLeft', isActive: true, isDefault: false },
-  { id: '4', name: 'PromptPay', nameEn: 'PromptPay', type: 'qr', icon: 'QrCode', isActive: true, isDefault: false },
+  { id: '2', name: 'โอนเงิน', nameEn: 'Transfer', type: 'transfer', icon: 'ArrowRightLeft', isActive: true, isDefault: false },
 ];
+
+// Mock sales breakdown by payment method
+export const mockSalesByPayment = {
+  cash: 16070, // ยอดเงินสด
+  transfer: 12380, // ยอดโอน
+};
 
 export const mockDashboardStats: DashboardStats = {
   todaySales: 28450,

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   TrendingUp, 
   ShoppingCart, 
@@ -6,56 +7,68 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   DollarSign,
-  Users
+  Users,
+  Banknote,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockDashboardStats, mockProducts } from '@/data/mockData';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { mockDashboardStats, mockProducts, mockSalesByPayment } from '@/data/mockData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-
-const statCards = [
-  {
-    title: 'ยอดขายวันนี้',
-    value: mockDashboardStats.todaySales,
-    change: 12.5,
-    icon: DollarSign,
-    format: 'currency',
-    color: 'primary',
-  },
-  {
-    title: 'รายการขายวันนี้',
-    value: mockDashboardStats.todayOrders,
-    change: 8.2,
-    icon: ShoppingCart,
-    format: 'number',
-    color: 'success',
-  },
-  {
-    title: 'ค่าเฉลี่ยต่อบิล',
-    value: mockDashboardStats.todayAvgOrder,
-    change: 3.8,
-    icon: TrendingUp,
-    format: 'currency',
-    color: 'info',
-  },
-  {
-    title: 'สินค้าใกล้หมด',
-    value: mockDashboardStats.lowStockCount,
-    change: -2,
-    icon: AlertTriangle,
-    format: 'number',
-    color: 'warning',
-  },
-];
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(value);
 };
 
 export default function Dashboard() {
+  const [showSalesDetail, setShowSalesDetail] = useState(false);
   const lowStockProducts = mockProducts.filter(p => p.stock <= p.minStock);
+  
+  const totalSales = mockSalesByPayment.cash + mockSalesByPayment.transfer;
+  const cashPercent = ((mockSalesByPayment.cash / totalSales) * 100).toFixed(1);
+  const transferPercent = ((mockSalesByPayment.transfer / totalSales) * 100).toFixed(1);
+
+  const statCards = [
+    {
+      title: 'ยอดขายวันนี้',
+      value: mockDashboardStats.todaySales,
+      change: 12.5,
+      icon: DollarSign,
+      format: 'currency' as const,
+      color: 'primary',
+      clickable: true,
+    },
+    {
+      title: 'รายการขายวันนี้',
+      value: mockDashboardStats.todayOrders,
+      change: 8.2,
+      icon: ShoppingCart,
+      format: 'number' as const,
+      color: 'success',
+      clickable: false,
+    },
+    {
+      title: 'ค่าเฉลี่ยต่อบิล',
+      value: mockDashboardStats.todayAvgOrder,
+      change: 3.8,
+      icon: TrendingUp,
+      format: 'currency' as const,
+      color: 'info',
+      clickable: false,
+    },
+    {
+      title: 'สินค้าใกล้หมด',
+      value: mockDashboardStats.lowStockCount,
+      change: -2,
+      icon: AlertTriangle,
+      format: 'number' as const,
+      color: 'warning',
+      clickable: false,
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -72,8 +85,9 @@ export default function Dashboard() {
         {statCards.map((stat, index) => (
           <Card 
             key={stat.title} 
-            className="glass overflow-hidden animate-slide-up"
+            className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
             style={{ animationDelay: `${index * 100}ms` }}
+            onClick={() => stat.clickable && setShowSalesDetail(true)}
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -99,11 +113,92 @@ export default function Dashboard() {
                     : stat.value.toLocaleString()}
                 </p>
                 <p className="text-sm text-muted-foreground">{stat.title}</p>
+                {stat.clickable && (
+                  <p className="text-xs text-primary mt-1">คลิกเพื่อดูรายละเอียด</p>
+                )}
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Sales Detail Dialog */}
+      <Dialog open={showSalesDetail} onOpenChange={setShowSalesDetail}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">รายละเอียดยอดขายวันนี้</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Total */}
+            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+              <p className="text-sm text-muted-foreground">ยอดขายรวม</p>
+              <p className="text-3xl font-bold font-display text-primary">
+                {formatCurrency(totalSales)}
+              </p>
+            </div>
+
+            {/* Breakdown */}
+            <div className="space-y-3">
+              {/* Cash */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-success/10 border border-success/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-success/20">
+                    <Banknote className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="font-medium">เงินสด</p>
+                    <p className="text-xs text-muted-foreground">{cashPercent}% ของยอดทั้งหมด</p>
+                  </div>
+                </div>
+                <p className="text-xl font-bold font-display text-success">
+                  {formatCurrency(mockSalesByPayment.cash)}
+                </p>
+              </div>
+
+              {/* Transfer */}
+              <div className="flex items-center justify-between p-4 rounded-xl bg-info/10 border border-info/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-info/20">
+                    <ArrowRightLeft className="h-5 w-5 text-info" />
+                  </div>
+                  <div>
+                    <p className="font-medium">โอนเงิน</p>
+                    <p className="text-xs text-muted-foreground">{transferPercent}% ของยอดทั้งหมด</p>
+                  </div>
+                </div>
+                <p className="text-xl font-bold font-display text-info">
+                  {formatCurrency(mockSalesByPayment.transfer)}
+                </p>
+              </div>
+            </div>
+
+            {/* Summary bar */}
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">สัดส่วนการชำระเงิน</p>
+              <div className="h-4 rounded-full overflow-hidden flex">
+                <div 
+                  className="bg-success h-full transition-all"
+                  style={{ width: `${cashPercent}%` }}
+                />
+                <div 
+                  className="bg-info h-full transition-all"
+                  style={{ width: `${transferPercent}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-success" />
+                  เงินสด {cashPercent}%
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-info" />
+                  โอนเงิน {transferPercent}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Charts Row */}
       <div className="grid gap-6 lg:grid-cols-2">
