@@ -14,8 +14,15 @@ import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
+
+// Component to handle root redirect
+function RootRedirect() {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -25,7 +32,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/pos" element={<POS />} />

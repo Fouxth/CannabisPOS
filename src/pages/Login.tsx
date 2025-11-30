@@ -1,89 +1,111 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, Leaf, LogIn, User, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth, ROLE_NAMES, UserRole } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export default function Login() {
-  const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const from = location.state?.from?.pathname || '/dashboard';
+
+  // Redirect if already logged in
+  if (isAuthenticated) {
+    navigate(from, { replace: true });
+    return null;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast.error('กรุณากรอกอีเมลและรหัสผ่าน');
-      return;
-    }
-
     setIsLoading(true);
-    
-    // Simulate login
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast.success('เข้าสู่ระบบสำเร็จ');
-    navigate('/dashboard');
+
+    try {
+      const success = await login(email, password);
+      if (success) {
+        toast.success('เข้าสู่ระบบสำเร็จ');
+        navigate(from, { replace: true });
+      } else {
+        toast.error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      }
+    } catch (error) {
+      toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const demoAccounts: { email: string; role: UserRole }[] = [
+    { email: 'owner@demo.com', role: 'OWNER' },
+    { email: 'admin@demo.com', role: 'ADMIN' },
+    { email: 'manager@demo.com', role: 'MANAGER' },
+    { email: 'cashier@demo.com', role: 'CASHIER' },
+    { email: 'viewer@demo.com', role: 'VIEWER' },
+  ];
+
+  const quickLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('123456');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted/30">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-accent/10 blur-3xl" />
-      </div>
-
-      <div className="w-full max-w-md relative animate-scale-in">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
+      <div className="w-full max-w-md space-y-6 animate-fade-in">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-glow mb-4">
-            <Leaf className="h-8 w-8 text-primary-foreground" />
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+            <Leaf className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold font-display text-gradient">CannabisPOS</h1>
-          <p className="text-muted-foreground mt-1">ระบบจัดการร้านค้าครบวงจร</p>
+          <h1 className="text-2xl sm:text-3xl font-bold font-display">CannabisPOS</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">ระบบจัดการร้าน</p>
         </div>
 
-        <Card className="glass-strong">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="font-display text-xl">เข้าสู่ระบบ</CardTitle>
-            <CardDescription>กรอกข้อมูลเพื่อเข้าใช้งานระบบ</CardDescription>
+        {/* Login Form */}
+        <Card className="glass">
+          <CardHeader className="space-y-1 pb-4">
+            <CardTitle className="text-xl sm:text-2xl font-display text-center">เข้าสู่ระบบ</CardTitle>
+            <CardDescription className="text-center text-sm">
+              กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">อีเมล</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">รหัสผ่าน</Label>
-                  <a href="#" className="text-xs text-primary hover:underline">
-                    ลืมรหัสผ่าน?
-                  </a>
-                </div>
+                <Label htmlFor="email" className="text-sm">อีเมล</Label>
                 <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="example@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm">รหัสผ่าน</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pr-10"
+                    className="pl-10 pr-10"
+                    required
                   />
                   <button
                     type="button"
@@ -94,41 +116,47 @@ export default function Login() {
                   </button>
                 </div>
               </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember" />
-                <label htmlFor="remember" className="text-sm cursor-pointer">
-                  จดจำฉันไว้
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 gradient-primary text-primary-foreground shadow-glow font-medium"
-                disabled={isLoading}
-              >
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     กำลังเข้าสู่ระบบ...
-                  </>
+                  </span>
                 ) : (
-                  'เข้าสู่ระบบ'
+                  <span className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" />
+                    เข้าสู่ระบบ
+                  </span>
                 )}
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Demo: ใส่อีเมลและรหัสผ่านอะไรก็ได้
-              </p>
-            </div>
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          © 2025 CannabisPOS. All rights reserved.
-        </p>
+        {/* Demo Accounts */}
+        <Card className="glass">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base sm:text-lg font-display">บัญชีทดสอบ</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              คลิกเพื่อกรอกข้อมูลอัตโนมัติ (รหัสผ่าน: 123456)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {demoAccounts.map((account) => (
+                <Button
+                  key={account.email}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-auto py-2 px-2"
+                  onClick={() => quickLogin(account.email)}
+                >
+                  {ROLE_NAMES[account.role]}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
