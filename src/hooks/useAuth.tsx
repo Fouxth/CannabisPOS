@@ -1,0 +1,203 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+// Role types based on the system requirements
+export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'CASHIER' | 'VIEWER';
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  avatar?: string;
+  storeId?: string;
+}
+
+// Permission definitions
+export const PERMISSIONS: Record<string, UserRole[]> = {
+  // Dashboard
+  view_dashboard: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  view_full_analytics: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  view_financial_summary: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  
+  // POS
+  use_pos: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
+  apply_discount: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
+  apply_unlimited_discount: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  void_transaction: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  
+  // Products
+  view_products: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  create_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  edit_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  delete_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  view_product_cost: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  
+  // Categories
+  view_categories: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  create_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  edit_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  delete_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  
+  // Stock
+  view_stock: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  adjust_stock: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  view_stock_history: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  view_stock_value: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  
+  // Reports
+  view_sales_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
+  view_inventory_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
+  view_profit_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  view_employee_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  export_reports: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  
+  // Users
+  view_users: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  create_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  edit_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  delete_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  manage_roles: ['SUPER_ADMIN', 'OWNER'],
+  
+  // Settings
+  view_settings: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
+  edit_store_settings: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+  manage_payment_methods: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+};
+
+export type Permission = keyof typeof PERMISSIONS;
+
+interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  hasPermission: (permission: Permission) => boolean;
+  hasAnyPermission: (permissions: Permission[]) => boolean;
+  hasAllPermissions: (permissions: Permission[]) => boolean;
+  switchRole: (role: UserRole) => void; // For demo/testing
+}
+
+// Mock users for demo
+const MOCK_USERS: Record<string, { password: string; user: User }> = {
+  'owner@demo.com': {
+    password: '123456',
+    user: {
+      id: '1',
+      email: 'owner@demo.com',
+      fullName: 'เจ้าของร้าน',
+      role: 'OWNER',
+      storeId: 'store1',
+    },
+  },
+  'admin@demo.com': {
+    password: '123456',
+    user: {
+      id: '2',
+      email: 'admin@demo.com',
+      fullName: 'ผู้ดูแลระบบ',
+      role: 'ADMIN',
+      storeId: 'store1',
+    },
+  },
+  'manager@demo.com': {
+    password: '123456',
+    user: {
+      id: '3',
+      email: 'manager@demo.com',
+      fullName: 'ผู้จัดการ',
+      role: 'MANAGER',
+      storeId: 'store1',
+    },
+  },
+  'cashier@demo.com': {
+    password: '123456',
+    user: {
+      id: '4',
+      email: 'cashier@demo.com',
+      fullName: 'พนักงานขาย',
+      role: 'CASHIER',
+      storeId: 'store1',
+    },
+  },
+  'viewer@demo.com': {
+    password: '123456',
+    user: {
+      id: '5',
+      email: 'viewer@demo.com',
+      fullName: 'ผู้ดูอย่างเดียว',
+      role: 'VIEWER',
+      storeId: 'store1',
+    },
+  },
+};
+
+export const useAuth = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
+
+      login: async (email: string, password: string) => {
+        // Mock login - replace with real API call
+        const mockUser = MOCK_USERS[email.toLowerCase()];
+        if (mockUser && mockUser.password === password) {
+          set({ user: mockUser.user, isAuthenticated: true });
+          return true;
+        }
+        return false;
+      },
+
+      logout: () => {
+        set({ user: null, isAuthenticated: false });
+      },
+
+      hasPermission: (permission: Permission) => {
+        const { user } = get();
+        if (!user) return false;
+        const allowedRoles = PERMISSIONS[permission];
+        return allowedRoles.includes(user.role);
+      },
+
+      hasAnyPermission: (permissions: Permission[]) => {
+        const { hasPermission } = get();
+        return permissions.some((p) => hasPermission(p));
+      },
+
+      hasAllPermissions: (permissions: Permission[]) => {
+        const { hasPermission } = get();
+        return permissions.every((p) => hasPermission(p));
+      },
+
+      switchRole: (role: UserRole) => {
+        const { user } = get();
+        if (user) {
+          set({ user: { ...user, role } });
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+    }
+  )
+);
+
+// Role display names
+export const ROLE_NAMES: Record<UserRole, string> = {
+  SUPER_ADMIN: 'Super Admin',
+  OWNER: 'เจ้าของร้าน',
+  ADMIN: 'ผู้ดูแลระบบ',
+  MANAGER: 'ผู้จัดการ',
+  CASHIER: 'พนักงานขาย',
+  VIEWER: 'ผู้ดูอย่างเดียว',
+};
+
+// Role colors for badges
+export const ROLE_COLORS: Record<UserRole, string> = {
+  SUPER_ADMIN: 'bg-red-500',
+  OWNER: 'bg-purple-500',
+  ADMIN: 'bg-blue-500',
+  MANAGER: 'bg-green-500',
+  CASHIER: 'bg-yellow-500',
+  VIEWER: 'bg-gray-500',
+};
