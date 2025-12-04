@@ -11,6 +11,8 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   lastLoginAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Category {
@@ -25,12 +27,12 @@ export interface Category {
   productCount: number;
   parentId?: string;
   sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Product {
   id: string;
-  sku: string;
-  barcode?: string;
   name: string;
   nameEn?: string;
   description?: string;
@@ -46,6 +48,8 @@ export interface Product {
   isActive: boolean;
   showInPos: boolean;
   totalSold: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CartItem {
@@ -81,7 +85,6 @@ export interface SaleItem {
   id: string;
   productId: string;
   productName: string;
-  productSku: string;
   quantity: number;
   unitPrice: number;
   discount: number;
@@ -111,6 +114,8 @@ export interface PaymentMethod {
   icon: string;
   isActive: boolean;
   isDefault: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface DashboardStats {
@@ -120,7 +125,214 @@ export interface DashboardStats {
   weekSales: number;
   monthSales: number;
   lowStockCount: number;
+  lowStockProducts: Product[];
+  salesByPayment: Record<string, number>;
   topProducts: { product: Product; quantity: number; revenue: number }[];
   salesByHour: { hour: number; sales: number; orders: number }[];
   recentSales: Sale[];
+}
+
+export interface ReportsOverview {
+  weeklySales: { day: string; sales: number; orders: number }[];
+  salesByPayment: Record<string, number>;
+  categoryBreakdown: { name: string; value: number; color: string }[];
+  topProducts: { product: Product; quantity: number; revenue: number }[];
+  ordersByHour: { hour: number; orders: number; sales: number }[];
+  inventory: {
+    totalProducts: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+    stockValue: number;
+  };
+  lowStockProducts: Product[];
+  // Profit data
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  profitMargin: number;
+  // Monthly breakdown
+  monthlyBreakdown: {
+    month: string;
+    revenue: number;
+    cost: number;
+    profit: number;
+    orders: number;
+  }[];
+  // BI Features
+  alerts: {
+    type: 'stock' | 'deadstock' | 'margin' | 'sales' | 'staff';
+    severity: 'critical' | 'warning' | 'info';
+    title: string;
+    message: string;
+    action?: string;
+    productId?: string;
+  }[];
+  insights: {
+    type: 'positive' | 'negative' | 'neutral';
+    title: string;
+    description: string;
+    factors: string[];
+  }[];
+  forecast: {
+    next7Days: {
+      total: number;
+      confidence: number;
+      daily: { date: string; projected: number }[];
+    };
+  };
+  recommendations: {
+    priority: 'critical' | 'high' | 'medium' | 'low';
+    category: 'inventory' | 'promotion' | 'pricing' | 'staffing';
+    title: string;
+    description: string;
+    action: string;
+    expectedImpact: string;
+  }[];
+  deadStock: {
+    productId: string;
+    productName: string;
+    imageUrl: string;
+    stock: number;
+    daysSinceLastSale: number;
+    valueAtCost: number;
+    suggestedDiscount: number;
+  }[];
+  // Financials
+  financials: {
+    totalIncome: number;
+    totalExpenses: number;
+    netProfit: number;
+    transactions: FinancialTransaction[];
+  };
+}
+
+export interface Expense {
+  id: string;
+  title: string;
+  amount: number;
+  category: 'rent' | 'utilities' | 'salary' | 'supplies' | 'marketing' | 'other';
+  date: string;
+  userId: string;
+  user?: User;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface FinancialTransaction {
+  id: string;
+  type: 'income' | 'expense';
+  date: string;
+  details: string;
+  category: string;
+  amount: number;
+  recorder: string;
+  referenceId?: string; // saleId or expenseId
+}
+
+export interface BillItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+}
+
+export interface Bill {
+  id: string;
+  billNumber: string;
+  userId: string;
+  user?: User;
+  customerId?: string;
+  customerName?: string;
+  items: BillItem[];
+  subtotal: number;
+  discountAmount: number;
+  discountPercent: number;
+  taxAmount: number;
+  totalAmount: number;
+  paymentMethod: string;
+  amountReceived: number;
+  changeAmount: number;
+  status: 'completed' | 'voided';
+  createdAt: string;
+  notes?: string;
+}
+
+export interface CheckoutItemInput {
+  productId: string;
+  productName?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+}
+
+export interface CheckoutPayload {
+  userId: string;
+  customerId?: string;
+  customerName?: string;
+  paymentMethod: string;
+  subtotal: number;
+  discountAmount: number;
+  discountPercent: number;
+  taxAmount: number;
+  totalAmount: number;
+  amountReceived: number;
+  changeAmount: number;
+  items: CheckoutItemInput[];
+  notes?: string;
+}
+
+export interface CheckoutResponse {
+  bill: Bill;
+  sale: Sale;
+}
+
+export interface StoreSettings {
+  storeName: string;
+  storeNameEn?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  taxId?: string;
+}
+
+export interface PosSettings {
+  invoicePrefix: string;
+  taxRate: number;
+  maxDiscountCashier: number;
+  maxDiscountManager: number;
+  showCostPrice: boolean;
+  scanSound: boolean;
+  autoPrintReceipt: boolean;
+}
+
+export interface SmsSettings {
+  enabled: boolean;
+  provider: string;
+  apiKey?: string;
+  sender?: string;
+  recipients: string[];
+  alerts: {
+    realtimeSales: boolean;
+    dailySummary: boolean;
+    monthlySummary: boolean;
+    lowStock: boolean;
+    stockAdjustments: boolean;
+  };
+}
+
+export interface AppNotificationSettings {
+  lowStock: boolean;
+  salesTarget: boolean;
+  sound: boolean;
+}
+
+export interface SettingsResponse {
+  store: StoreSettings;
+  pos: PosSettings;
+  sms: SmsSettings;
+  notifications: AppNotificationSettings;
 }

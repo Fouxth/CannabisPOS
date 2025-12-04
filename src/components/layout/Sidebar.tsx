@@ -1,15 +1,17 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  FolderTree, 
-  Boxes, 
-  BarChart3, 
-  Users, 
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  FolderTree,
+  Boxes,
+  BarChart3,
+  Users,
   Settings,
   ChevronLeft,
-  Leaf
+  Leaf,
+  Receipt,
+  TrendingDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth, ROLE_NAMES, ROLE_COLORS, Permission } from '@/hooks/useAuth';
@@ -29,6 +31,8 @@ const navItems: NavItem[] = [
   { icon: FolderTree, label: 'หมวดหมู่', path: '/categories', requiredPermission: 'view_categories' },
   { icon: Boxes, label: 'สต็อก', path: '/stock', requiredPermission: 'view_stock' },
   { icon: BarChart3, label: 'รายงาน', path: '/reports', requiredPermission: 'view_sales_report' },
+  { icon: TrendingDown, label: 'รายจ่าย', path: '/expenses', requiredPermission: 'view_sales_report' },
+  { icon: Receipt, label: 'บิล', path: '/bills', requiredPermission: 'view_bills' },
   { icon: Users, label: 'พนักงาน', path: '/users', requiredPermission: 'view_users' },
   { icon: Settings, label: 'ตั้งค่า', path: '/settings', requiredPermission: 'view_settings' },
 ];
@@ -117,8 +121,8 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                 <p className="text-xs sm:text-sm font-medium text-sidebar-foreground truncate">
                   {user.fullName}
                 </p>
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className={cn('text-[9px] sm:text-[10px] px-1 sm:px-1.5 py-0 text-white', ROLE_COLORS[user.role])}
                 >
                   {ROLE_NAMES[user.role]}

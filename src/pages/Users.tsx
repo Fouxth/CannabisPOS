@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, MoreVertical, Edit, Trash2, Shield, Mail, Phone, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,15 +32,8 @@ import { Switch } from '@/components/ui/switch';
 import { User, UserRole } from '@/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-const mockUsers: User[] = [
-  { id: '1', employeeCode: 'E001', email: 'owner@store.com', fullName: 'สมศักดิ์ เจริญรุ่งเรือง', phone: '081-234-5678', role: 'OWNER', isActive: true, lastLoginAt: '2025-11-28T10:30:00' },
-  { id: '2', employeeCode: 'E002', email: 'admin@store.com', fullName: 'สมหญิง ใจดี', phone: '082-345-6789', role: 'ADMIN', isActive: true, lastLoginAt: '2025-11-28T09:15:00' },
-  { id: '3', employeeCode: 'E003', email: 'manager@store.com', fullName: 'วิชัย มั่นคง', phone: '083-456-7890', role: 'MANAGER', isActive: true, lastLoginAt: '2025-11-28T08:00:00' },
-  { id: '4', employeeCode: 'E004', email: 'cashier1@store.com', fullName: 'สมชาย ใจดี', phone: '084-567-8901', role: 'CASHIER', isActive: true, lastLoginAt: '2025-11-28T14:30:00' },
-  { id: '5', employeeCode: 'E005', email: 'cashier2@store.com', fullName: 'นารี สดใส', phone: '085-678-9012', role: 'CASHIER', isActive: true, lastLoginAt: '2025-11-27T18:00:00' },
-  { id: '6', employeeCode: 'E006', email: 'viewer@store.com', fullName: 'ประยุทธ์ ดูแล', phone: '086-789-0123', role: 'VIEWER', isActive: false, lastLoginAt: '2025-11-20T10:00:00' },
-];
+import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const roleColors: Record<UserRole, string> = {
   SUPER_ADMIN: 'bg-red-500',
@@ -60,10 +54,52 @@ const roleLabels: Record<UserRole, string> = {
 };
 
 export default function Users() {
-  const [users] = useState(mockUsers);
+  const queryClient = useQueryClient();
+
+  const { data: users = [], isLoading } = useQuery({
+    queryKey: ['users'],
+    queryFn: api.getUsers,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: api.createUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('เพิ่มพนักงานสำเร็จ');
+      setShowDialog(false);
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาด');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<User> }) => api.updateUser(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('แก้ไขพนักงานสำเร็จ');
+      setShowDialog(false);
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาด');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: api.deleteUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('ลบพนักงานสำเร็จ');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาด');
+    },
+  });
 
   const filteredUsers = users.filter((user) => {
     return !searchQuery ||
@@ -72,11 +108,39 @@ export default function Users() {
       user.employeeCode.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const handleSave = () => {
-    toast.success(editingUser ? 'แก้ไขพนักงานสำเร็จ' : 'เพิ่มพนักงานสำเร็จ');
-    setShowDialog(false);
-    setEditingUser(null);
+  const handleSave = (data: Partial<User>) => {
+    if (editingUser) {
+      updateMutation.mutate({ id: editingUser.id, data });
+    } else {
+      // Generate unique employee code
+      const newData = {
+        ...data,
+        employeeCode: data.employeeCode || `EMP${Date.now().toString().slice(-6)}`
+      };
+      createMutation.mutate(newData);
+    }
   };
+
+  const handleDelete = (user: User) => {
+    if (confirm(`คุณต้องการลบพนักงาน ${user.fullName} ใช่หรือไม่?`)) {
+      deleteMutation.mutate(user.id);
+    }
+  };
+
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-40" />
+        <Skeleton className="h-[120px] w-full" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-48 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -148,7 +212,7 @@ export default function Users() {
                       จัดการสิทธิ์
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(user)}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       ลบ
                     </DropdownMenuItem>
@@ -201,62 +265,68 @@ export default function Users() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">ชื่อ-นามสกุล *</Label>
-              <Input id="fullName" defaultValue={editingUser?.fullName} placeholder="กรอกชื่อ-นามสกุล" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const data: Partial<User> = {
+              fullName: (form.elements.namedItem('fullName') as HTMLInputElement).value,
+              email: (form.elements.namedItem('email') as HTMLInputElement).value,
+              phone: (form.elements.namedItem('phone') as HTMLInputElement).value || undefined,
+              role: (form.elements.namedItem('role') as HTMLSelectElement).value as UserRole,
+              isActive: (form.elements.namedItem('active') as HTMLInputElement).checked,
+            };
+            handleSave(data);
+          }}>
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">อีเมล *</Label>
-                <Input id="email" type="email" defaultValue={editingUser?.email} placeholder="email@example.com" />
+                <Label htmlFor="fullName">ชื่อ-นามสกุล *</Label>
+                <Input id="fullName" name="fullName" defaultValue={editingUser?.fullName} placeholder="กรอกชื่อ-นามสกุล" required />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">อีเมล *</Label>
+                  <Input id="email" name="email" type="email" defaultValue={editingUser?.email} placeholder="email@example.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">เบอร์โทร</Label>
+                  <Input id="phone" name="phone" defaultValue={editingUser?.phone} placeholder="08X-XXX-XXXX" />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="phone">เบอร์โทร</Label>
-                <Input id="phone" defaultValue={editingUser?.phone} placeholder="08X-XXX-XXXX" />
+                <Label htmlFor="role">ตำแหน่ง</Label>
+                <Select name="role" defaultValue={editingUser?.role || 'CASHIER'}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกตำแหน่ง" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
+                    <SelectItem value="MANAGER">ผู้จัดการ</SelectItem>
+                    <SelectItem value="CASHIER">พนักงานขาย</SelectItem>
+                    <SelectItem value="VIEWER">ผู้ดูอย่างเดียว</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label htmlFor="active">เปิดใช้งาน</Label>
+                  <p className="text-sm text-muted-foreground">อนุญาตให้เข้าสู่ระบบได้</p>
+                </div>
+                <Switch id="active" name="active" defaultChecked={editingUser?.isActive ?? true} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">ตำแหน่ง</Label>
-              <Select defaultValue={editingUser?.role || 'CASHIER'}>
-                <SelectTrigger>
-                  <SelectValue placeholder="เลือกตำแหน่ง" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
-                  <SelectItem value="MANAGER">ผู้จัดการ</SelectItem>
-                  <SelectItem value="CASHIER">พนักงานขาย</SelectItem>
-                  <SelectItem value="VIEWER">ผู้ดูอย่างเดียว</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {!editingUser && (
-              <div className="space-y-2">
-                <Label htmlFor="password">รหัสผ่าน *</Label>
-                <Input id="password" type="password" placeholder="กรอกรหัสผ่าน" />
-              </div>
-            )}
-
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <Label htmlFor="active">เปิดใช้งาน</Label>
-                <p className="text-sm text-muted-foreground">อนุญาตให้เข้าสู่ระบบได้</p>
-              </div>
-              <Switch id="active" defaultChecked={editingUser?.isActive ?? true} />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowDialog(false); setEditingUser(null); }}>
-              ยกเลิก
-            </Button>
-            <Button onClick={handleSave} className="gradient-primary text-primary-foreground">
-              {editingUser ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => { setShowDialog(false); setEditingUser(null); }}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" className="gradient-primary text-primary-foreground">
+                {editingUser ? 'บันทึกการแก้ไข' : 'เพิ่มพนักงาน'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

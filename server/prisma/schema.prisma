@@ -1,0 +1,322 @@
+// This is your Prisma schema file for PostgreSQL
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User/Employee Model
+model User {
+  id            String   @id @default(uuid())
+  employeeCode  String   @unique
+  email         String   @unique
+  fullName      String
+  nickname      String?
+  phone         String?
+  avatarUrl     String?
+  password      String   @default("$2b$10$fwyhvOgLG5S2242nKhkj0.8NexG.8oY8VPaEjpUayBzJtol9ZSCnK")
+  role          UserRole
+  isActive      Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  sales         Sale[]
+  bills         Bill[]
+  stockMovements StockMovement[]
+  expenses      Expense[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  OWNER
+  ADMIN
+  MANAGER
+  CASHIER
+  VIEWER
+}
+
+// Category Model
+model Category {
+  id           String    @id @default(uuid())
+  name         String
+  nameEn       String?
+  slug         String    @unique
+  description  String?   @db.Text
+  color        String
+  icon         String
+  isActive     Boolean   @default(true)
+  parentId     String?
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  products     Product[]
+  parent       Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     Category[] @relation("CategoryHierarchy")
+
+  @@map("categories")
+}
+
+// Product Model
+model Product {
+  id          String    @id @default(uuid())
+  name        String
+  nameEn      String?
+  description String?   @db.Text
+  price       Decimal   @db.Decimal(10, 2)
+  cost        Decimal   @db.Decimal(10, 2)
+  comparePrice Decimal? @db.Decimal(10, 2)
+  stock       Int       @default(0)
+  minStock    Int       @default(10)
+  stockUnit   String    @default("unit")
+  categoryId  String?
+  imageUrl    String?
+  isActive    Boolean   @default(true)
+  showInPos   Boolean   @default(true)
+  totalSold   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  saleItems   SaleItem[]
+  billItems   BillItem[]
+  stockMovements StockMovement[]
+
+  @@map("products")
+}
+
+// Sale Model
+model Sale {
+  id              String      @id @default(uuid())
+  saleNumber      String      @unique
+  userId          String
+  customerId      String?
+  subtotal        Decimal     @db.Decimal(10, 2)
+  discountAmount  Decimal     @db.Decimal(10, 2) @default(0)
+  discountPercent Decimal     @db.Decimal(5, 2) @default(0)
+  taxAmount       Decimal     @db.Decimal(10, 2) @default(0)
+  totalAmount     Decimal     @db.Decimal(10, 2)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   String
+  amountReceived  Decimal     @db.Decimal(10, 2)
+  changeAmount    Decimal     @db.Decimal(10, 2)
+  status          SaleStatus  @default(COMPLETED)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  user            User        @relation(fields: [userId], references: [id])
+  items           SaleItem[]
+
+  @@map("sales")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  REFUNDED
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+  PENDING
+}
+
+// Sale Item Model
+model SaleItem {
+  id          String   @id @default(uuid())
+  saleId      String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  discount    Decimal  @db.Decimal(10, 2) @default(0)
+  total       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+// Bill Model (Customer Receipt)
+model Bill {
+  id              String     @id @default(uuid())
+  billNumber      String     @unique
+  userId          String
+  customerId      String?
+  customerName    String?
+  subtotal        Decimal    @db.Decimal(10, 2)
+  discountAmount  Decimal    @db.Decimal(10, 2) @default(0)
+  discountPercent Decimal    @db.Decimal(5, 2) @default(0)
+  taxAmount       Decimal    @db.Decimal(10, 2) @default(0)
+  totalAmount     Decimal    @db.Decimal(10, 2)
+  paymentMethod   String
+  amountReceived  Decimal    @db.Decimal(10, 2)
+  changeAmount    Decimal    @db.Decimal(10, 2)
+  status          BillStatus @default(COMPLETED)
+  notes           String?    @db.Text
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  user            User       @relation(fields: [userId], references: [id])
+  items           BillItem[]
+
+  @@map("bills")
+}
+
+enum BillStatus {
+  COMPLETED
+  VOIDED
+}
+
+// Bill Item Model
+model BillItem {
+  id          String   @id @default(uuid())
+  billId      String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  discount    Decimal  @db.Decimal(10, 2) @default(0)
+  total       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("bill_items")
+}
+
+// Stock Movement Model
+model StockMovement {
+  id               String         @id @default(uuid())
+  productId        String
+  userId           String
+  movementType     MovementType
+  quantityChange   Int
+  previousQuantity Int
+  newQuantity      Int
+  reason           String?
+  notes            String?        @db.Text
+  createdAt        DateTime       @default(now())
+
+  // Relations
+  product          Product        @relation(fields: [productId], references: [id])
+  user             User           @relation(fields: [userId], references: [id])
+
+  @@map("stock_movements")
+}
+
+enum MovementType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+  DAMAGED
+}
+
+// Payment Method Model
+model PaymentMethod {
+  id        String          @id @default(uuid())
+  name      String
+  nameEn    String?
+  type      PaymentType
+  icon      String
+  isActive  Boolean         @default(true)
+  isDefault Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("payment_methods")
+}
+
+enum PaymentType {
+  CASH
+  CARD
+  TRANSFER
+  QR
+}
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// Expense Model
+model Expense {
+  id        String        @id @default(uuid())
+  title     String
+  amount    Decimal       @db.Decimal(10, 2)
+  category  ExpenseCategory
+  date      DateTime
+  userId    String
+  notes     String?       @db.Text
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  user      User          @relation(fields: [userId], references: [id])
+
+  @@map("expenses")
+}
+
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SALARY
+  SUPPLIES
+  MARKETING
+  OTHER
+}
+
+// Notification Model
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  LOW_STOCK
+  SALES_MILESTONE
+  SYSTEM_MESSAGE
+  STOCK_ADJUSTMENT
+  INFO
+  WARNING
+  ERROR
+}

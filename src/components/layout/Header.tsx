@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Sun, Moon, LogOut, Menu, User, Shield } from 'lucide-react';
+import { Bell, Sun, Moon, LogOut, Menu, User } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,17 +13,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { useAuth, ROLE_NAMES, ROLE_COLORS, UserRole } from '@/hooks/useAuth';
+import { useAuth, ROLE_NAMES } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { NotificationDropdown } from '../NotificationDropdown';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
-  const [isDark, setIsDark] = useState(true);
-  const { user, logout, switchRole } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -38,13 +39,6 @@ export function Header({ onMenuClick }: HeaderProps) {
     toast.success('ออกจากระบบสำเร็จ');
     navigate('/login');
   };
-
-  const handleSwitchRole = (role: UserRole) => {
-    switchRole(role);
-    toast.success(`เปลี่ยนบทบาทเป็น ${ROLE_NAMES[role]}`);
-  };
-
-  const roles: UserRole[] = ['OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'];
 
   return (
     <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-6">
@@ -74,48 +68,14 @@ export function Header({ onMenuClick }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setIsDark(!isDark)}
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="h-8 w-8 sm:h-9 sm:w-9"
         >
-          {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
-          <Bell className="h-4 w-4" />
-          <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-destructive text-[9px] sm:text-[10px] font-bold text-destructive-foreground">
-            3
-          </span>
-        </Button>
-
-        {/* Role Switcher (Demo) */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
-              <Shield className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs">สลับบทบาท (Demo)</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {roles.map((role) => (
-              <DropdownMenuItem
-                key={role}
-                onClick={() => handleSwitchRole(role)}
-                className={cn(
-                  'cursor-pointer text-xs',
-                  user?.role === role && 'bg-accent'
-                )}
-              >
-                <div className={cn('w-2 h-2 rounded-full mr-2', ROLE_COLORS[role])} />
-                {ROLE_NAMES[role]}
-                {user?.role === role && (
-                  <Badge variant="secondary" className="ml-auto text-[10px]">ปัจจุบัน</Badge>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationDropdown />
 
         {/* User Menu */}
         <DropdownMenu>
@@ -135,7 +95,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <DropdownMenuContent align="end" className="w-48 sm:w-56">
             <DropdownMenuLabel className="text-xs sm:text-sm">บัญชีของฉัน</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-xs sm:text-sm">
+            <DropdownMenuItem className="text-xs sm:text-sm cursor-pointer" onClick={() => navigate('/profile')}>
               <User className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               โปรไฟล์
             </DropdownMenuItem>

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +9,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { usePOSStore } from '@/stores/posStore';
-import { mockProducts, mockCategories, mockPaymentMethods } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { BillReceipt } from '@/components/BillReceipt';
+import { Bill, BillItem, CheckoutPayload } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
@@ -45,54 +50,115 @@ export default function POS() {
     amountReceived,
     setAmountReceived,
     globalDiscount,
+    globalDiscountType,
     setGlobalDiscount,
+    setTaxRate,
   } = usePOSStore();
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
+  const [showBillDialog, setShowBillDialog] = useState(false);
+  const [currentBill, setCurrentBill] = useState<Bill | null>(null);
 
-  const filteredProducts = useMemo(() => {
-    return mockProducts.filter((product) => {
-      const matchesCategory = !selectedCategory || product.categoryId === selectedCategory;
-      const matchesSearch = !searchQuery || 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.barcode?.includes(searchQuery);
-      return matchesCategory && matchesSearch && product.isActive && product.showInPos;
-    });
-  }, [selectedCategory, searchQuery]);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['products'],
+    queryFn: api.getProducts,
+  });
+
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: api.getCategories,
+  });
+
+  const { data: paymentMethods = [], isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['payment-methods'],
+    queryFn: api.getPaymentMethods,
+  });
+  const { data: systemSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.getSettings,
+  });
+
+  useEffect(() => {
+    if (systemSettings?.pos?.taxRate) {
+      setTaxRate(systemSettings.pos.taxRate);
+    }
+  }, [systemSettings, setTaxRate]);
+
+  const checkoutMutation = useMutation({
+    mutationFn: api.createBill,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['reports-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+    },
+  });
+
+  const activePaymentMethods = useMemo(
+    () => paymentMethods.filter((method) => method.isActive),
+    [paymentMethods]
+  );
+  const availablePaymentMethods = activePaymentMethods.length > 0 ? activePaymentMethods : paymentMethods;
+
+  useEffect(() => {
+    if (!availablePaymentMethods.length) return;
+    if (!availablePaymentMethods.some((method) => method.type === selectedPaymentMethod)) {
+      setSelectedPaymentMethod(availablePaymentMethods[0].type);
+    }
+  }, [availablePaymentMethods, selectedPaymentMethod, setSelectedPaymentMethod]);
+
+  // Calculate totals before useEffect that depends on them
   const subtotal = getSubtotal();
   const discount = getDiscount();
   const tax = getTax();
   const total = getTotal();
-  const change = amountReceived - total;
+  const change = selectedPaymentMethod === 'cash' ? amountReceived - total : 0;
+
+  useEffect(() => {
+    if (selectedPaymentMethod !== 'cash') {
+      setAmountReceived(total);
+    }
+  }, [selectedPaymentMethod, total, setAmountReceived]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesCategory = !selectedCategory || product.categoryId === selectedCategory;
+      const matchesSearch = !searchQuery ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch && product.isActive && product.showInPos;
+    });
+  }, [selectedCategory, searchQuery, products]);
 
   // Calculate sales by category
   const salesByCategory = useMemo(() => {
     const categoryTotals: Record<string, { name: string; color: string; amount: number; quantity: number }> = {};
-    
+
     cart.forEach((item) => {
-      const category = mockCategories.find((c) => c.id === item.product.categoryId);
+      const category = categories.find((c) => c.id === item.product.categoryId);
       const categoryId = category?.id || 'uncategorized';
       const categoryName = category?.name || 'ไม่มีหมวดหมู่';
       const categoryColor = category?.color || '#6B7280';
-      
+
       if (!categoryTotals[categoryId]) {
         categoryTotals[categoryId] = { name: categoryName, color: categoryColor, amount: 0, quantity: 0 };
       }
-      
+
       const itemTotal = item.product.price * item.quantity;
       const itemDiscount = item.discountType === 'percent'
         ? itemTotal * (item.discount / 100)
         : item.discount;
-      
+
       categoryTotals[categoryId].amount += itemTotal - itemDiscount;
       categoryTotals[categoryId].quantity += item.quantity;
     });
-    
+
     return Object.entries(categoryTotals).sort((a, b) => b[1].amount - a[1].amount);
-  }, [cart]);
+  }, [cart, categories]);
 
   const handleCheckout = () => {
     if (cart.length === 0) {
@@ -102,20 +168,75 @@ export default function POS() {
     setShowPaymentDialog(true);
   };
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (amountReceived < total && selectedPaymentMethod === 'cash') {
       toast.error('จำนวนเงินไม่เพียงพอ');
       return;
     }
-    toast.success('ชำระเงินสำเร็จ!', {
-      description: `ยอดรวม ${formatCurrency(total)} บาท`,
+
+    // Create bill items
+    const billItems: BillItem[] = cart.map((item) => {
+      const itemTotal = item.product.price * item.quantity;
+      const itemDiscount = item.discountType === 'percent'
+        ? itemTotal * (item.discount / 100)
+        : item.discount;
+
+      return {
+        id: item.id,
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+        discount: itemDiscount,
+        total: itemTotal - itemDiscount,
+      };
     });
-    clearCart();
-    setShowPaymentDialog(false);
-    setAmountReceived(0);
+
+    const payload: CheckoutPayload = {
+      userId: user?.id || 'd245634a-276d-4680-9322-14c0de6830f5', // Cashier user ID
+      paymentMethod: selectedPaymentMethod,
+      subtotal,
+      discountAmount: discount,
+      discountPercent: globalDiscountType === 'percent' ? globalDiscount : 0,
+      taxAmount: tax,
+      totalAmount: total,
+      amountReceived: selectedPaymentMethod === 'cash' ? amountReceived : total,
+      changeAmount: selectedPaymentMethod === 'cash' ? Math.max(change, 0) : 0,
+      items: billItems,
+    };
+
+    try {
+      const response = await checkoutMutation.mutateAsync(payload);
+
+      toast.success('ชำระเงินสำเร็จ!', {
+        description: `ยอดรวม ${formatCurrency(total)} บาท`,
+      });
+
+      setCurrentBill(response.bill);
+      clearCart();
+      setShowPaymentDialog(false);
+      setAmountReceived(0);
+      setSelectedPaymentMethod('cash');
+      setGlobalDiscount(0, 'percent');
+      setShowBillDialog(true);
+    } catch (error: any) {
+      const message = error?.message || 'ชำระเงินไม่สำเร็จ กรุณาลองใหม่';
+      toast.error(message);
+    }
   };
 
   const quickAmounts = [20, 50, 100, 500, 1000];
+  const isProcessingPayment = checkoutMutation.isPending;
+  const isLoadingData = isLoadingProducts || isLoadingCategories || isLoadingPayments;
+
+  if (isLoadingData) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-[500px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-6 animate-fade-in">
@@ -132,7 +253,7 @@ export default function POS() {
             >
               ทั้งหมด
             </Button>
-            {mockCategories.map((category) => (
+            {categories.map((category) => (
               <Button
                 key={category.id}
                 variant={selectedCategory === category.id ? 'default' : 'outline'}
@@ -155,7 +276,7 @@ export default function POS() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="ค้นหาสินค้า, SKU, Barcode..."
+              placeholder="ค้นหาสินค้า..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -194,7 +315,7 @@ export default function POS() {
             {filteredProducts.map((product, index) => {
               const isLowStock = product.stock <= product.minStock;
               const isOutOfStock = product.stock === 0;
-              const category = mockCategories.find((c) => c.id === product.categoryId);
+              const category = categories.find((c) => c.id === product.categoryId) || product.category;
 
               return (
                 <Card
@@ -237,7 +358,6 @@ export default function POS() {
                       </div>
                       <CardContent className="p-3">
                         <p className="font-medium text-sm line-clamp-1">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">{product.sku}</p>
                         <p className="text-lg font-bold text-primary mt-1">
                           ฿{formatCurrency(product.price)}
                         </p>
@@ -252,7 +372,6 @@ export default function POS() {
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">{product.sku}</p>
                         <p className="text-xs text-muted-foreground">
                           สต็อก: {product.stock} {product.stockUnit}
                         </p>
@@ -402,7 +521,7 @@ export default function POS() {
           <DialogHeader>
             <DialogTitle className="font-display text-xl">ชำระเงิน</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* Amount */}
             <div className="text-center py-4 bg-muted/50 rounded-xl">
@@ -443,7 +562,7 @@ export default function POS() {
 
             {/* Payment Methods */}
             <div className="grid grid-cols-2 gap-2">
-              {mockPaymentMethods.map((method) => {
+              {availablePaymentMethods.map((method) => {
                 const Icon = paymentIcons[method.type];
                 return (
                   <Button
@@ -475,7 +594,7 @@ export default function POS() {
                     className="pl-8 text-2xl h-14 font-bold text-center"
                   />
                 </div>
-                
+
                 {/* Quick Amount Buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {quickAmounts.map((amount) => (
@@ -517,9 +636,12 @@ export default function POS() {
             <Button
               className="gradient-primary text-primary-foreground shadow-glow"
               onClick={handlePayment}
-              disabled={selectedPaymentMethod === 'cash' && amountReceived < total}
+              disabled={
+                isProcessingPayment ||
+                (selectedPaymentMethod === 'cash' && amountReceived < total)
+              }
             >
-              ยืนยันการชำระ
+              {isProcessingPayment ? 'กำลังประมวลผล...' : 'ยืนยันการชำระ'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -531,7 +653,7 @@ export default function POS() {
           <DialogHeader>
             <DialogTitle className="font-display">ส่วนลด</DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <Button
@@ -563,7 +685,7 @@ export default function POS() {
                 20%
               </Button>
             </div>
-            
+
             <div className="relative">
               <Input
                 type="number"
@@ -584,6 +706,22 @@ export default function POS() {
               ตกลง
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bill Dialog */}
+      <Dialog open={showBillDialog} onOpenChange={setShowBillDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">บิลการขาย</DialogTitle>
+          </DialogHeader>
+          {currentBill && (
+            <BillReceipt
+              bill={currentBill}
+              onClose={() => setShowBillDialog(false)}
+              showCloseButton={false}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

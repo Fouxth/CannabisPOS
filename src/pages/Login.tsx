@@ -44,18 +44,7 @@ export default function Login() {
     }
   };
 
-  const demoAccounts: { email: string; role: UserRole }[] = [
-    { email: 'owner@demo.com', role: 'OWNER' },
-    { email: 'admin@demo.com', role: 'ADMIN' },
-    { email: 'manager@demo.com', role: 'MANAGER' },
-    { email: 'cashier@demo.com', role: 'CASHIER' },
-    { email: 'viewer@demo.com', role: 'VIEWER' },
-  ];
 
-  const quickLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('123456');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
@@ -133,30 +122,6 @@ export default function Login() {
           </CardContent>
         </Card>
 
-        {/* Demo Accounts */}
-        <Card className="glass">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base sm:text-lg font-display">บัญชีทดสอบ</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">
-              คลิกเพื่อกรอกข้อมูลอัตโนมัติ (รหัสผ่าน: 123456)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {demoAccounts.map((account) => (
-                <Button
-                  key={account.email}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-auto py-2 px-2"
-                  onClick={() => quickLogin(account.email)}
-                >
-                  {ROLE_NAMES[account.role]}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

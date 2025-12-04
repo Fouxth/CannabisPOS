@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, Search, Filter, MoreVertical, Edit, Trash2, Eye, Download, Upload } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, MoreVertical, Edit, Trash2, Eye, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,9 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockProducts, mockCategories } from '@/data/mockData';
 import { Product } from '@/types';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
@@ -48,24 +50,93 @@ export default function Products() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [formData, setFormData] = useState<Partial<Product>>({});
 
-  const filteredProducts = mockProducts.filter((product) => {
-    const matchesSearch = !searchQuery ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const queryClient = useQueryClient();
+
+  const { data: products = [], isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['products'],
+    queryFn: api.getProducts,
   });
 
-  const handleSaveProduct = () => {
-    toast.success(editingProduct ? 'แก้ไขสินค้าสำเร็จ' : 'เพิ่มสินค้าสำเร็จ');
-    setShowAddDialog(false);
-    setEditingProduct(null);
+  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: api.getCategories,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: api.createProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('เพิ่มสินค้าสำเร็จ');
+      setShowAddDialog(false);
+      setFormData({});
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Product> }) => api.updateProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('แก้ไขสินค้าสำเร็จ');
+      setShowAddDialog(false);
+      setEditingProduct(null);
+      setFormData({});
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาดในการแก้ไขสินค้า');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: api.deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('ลบสินค้าสำเร็จ');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาดในการลบสินค้า');
+    },
+  });
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = !searchQuery ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || product.categoryId === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [products, searchQuery, selectedCategory]);
+
+  const isLoading = isLoadingProducts || isLoadingCategories;
+
+  const handleSaveProduct = (data: Partial<Product>) => {
+    if (editingProduct) {
+      updateMutation.mutate({ id: editingProduct.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   const handleDeleteProduct = (product: Product) => {
-    toast.success(`ลบสินค้า ${product.name} สำเร็จ`);
+    if (confirm(`คุณต้องการลบสินค้า ${product.name} ใช่หรือไม่?`)) {
+      deleteMutation.mutate(product.id);
+    }
   };
+
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-1/3" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -73,7 +144,7 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-display">สินค้า</h1>
-          <p className="text-muted-foreground">จัดการสินค้าทั้งหมด {mockProducts.length} รายการ</p>
+          <p className="text-muted-foreground">จัดการสินค้าทั้งหมด {products.length} รายการ</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
@@ -98,7 +169,7 @@ export default function Products() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="ค้นหาสินค้า, SKU..."
+                placeholder="ค้นหาสินค้า..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -110,7 +181,7 @@ export default function Products() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">หมวดหมู่ทั้งหมด</SelectItem>
-                {mockCategories.map((category) => (
+                {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
@@ -129,7 +200,6 @@ export default function Products() {
               <TableRow>
                 <TableHead className="w-[80px]">รูป</TableHead>
                 <TableHead>สินค้า</TableHead>
-                <TableHead>SKU</TableHead>
                 <TableHead>หมวดหมู่</TableHead>
                 <TableHead className="text-right">ราคา</TableHead>
                 <TableHead className="text-right">ต้นทุน</TableHead>
@@ -140,9 +210,9 @@ export default function Products() {
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product, index) => {
-                const category = mockCategories.find((c) => c.id === product.categoryId);
+                const category = categories.find((c) => c.id === product.categoryId) || product.category;
                 const isLowStock = product.stock <= product.minStock;
-                
+
                 return (
                   <TableRow
                     key={product.id}
@@ -159,14 +229,8 @@ export default function Products() {
                     <TableCell>
                       <div>
                         <p className="font-medium">{product.name}</p>
-                        {product.barcode && (
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {product.barcode}
-                          </p>
-                        )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{product.sku}</TableCell>
                     <TableCell>
                       {category && (
                         <Badge
@@ -232,7 +296,13 @@ export default function Products() {
       </Card>
 
       {/* Add/Edit Product Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={(open) => { setShowAddDialog(open); if (!open) setEditingProduct(null); }}>
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) {
+          setEditingProduct(null);
+          setFormData({});
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">
@@ -240,88 +310,100 @@ export default function Products() {
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">ชื่อสินค้า *</Label>
-                <Input id="name" defaultValue={editingProduct?.name} placeholder="กรอกชื่อสินค้า" />
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            const form = e.currentTarget;
+            const data: Partial<Product> = {
+              name: (form.elements.namedItem('name') as HTMLInputElement).value,
+              nameEn: (form.elements.namedItem('nameEn') as HTMLInputElement).value || undefined,
+              categoryId: (form.elements.namedItem('category') as HTMLSelectElement).value || undefined,
+              price: parseFloat((form.elements.namedItem('price') as HTMLInputElement).value),
+              cost: parseFloat((form.elements.namedItem('cost') as HTMLInputElement).value) || 0,
+              comparePrice: parseFloat((form.elements.namedItem('comparePrice') as HTMLInputElement).value) || undefined,
+              stock: parseInt((form.elements.namedItem('stock') as HTMLInputElement).value) || 0,
+              minStock: parseInt((form.elements.namedItem('minStock') as HTMLInputElement).value) || 10,
+              stockUnit: (form.elements.namedItem('stockUnit') as HTMLInputElement).value || 'unit',
+              description: (form.elements.namedItem('description') as HTMLTextAreaElement).value || undefined,
+              isActive: true,
+              showInPos: true,
+            };
+            handleSaveProduct(data);
+          }}>
+            <div className="grid gap-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">ชื่อสินค้า *</Label>
+                  <Input id="name" name="name" defaultValue={editingProduct?.name} placeholder="กรอกชื่อสินค้า" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nameEn">ชื่อภาษาอังกฤษ</Label>
+                  <Input id="nameEn" name="nameEn" defaultValue={editingProduct?.nameEn} placeholder="Product name" />
+                </div>
               </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="category">หมวดหมู่</Label>
+                  <Select name="category" defaultValue={editingProduct?.categoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกหมวดหมู่" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="price">ราคาขาย *</Label>
+                  <Input id="price" name="price" type="number" step="0.01" defaultValue={editingProduct?.price} placeholder="0.00" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cost">ราคาทุน</Label>
+                  <Input id="cost" name="cost" type="number" step="0.01" defaultValue={editingProduct?.cost} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="comparePrice">ราคาเปรียบเทียบ</Label>
+                  <Input id="comparePrice" name="comparePrice" type="number" step="0.01" defaultValue={editingProduct?.comparePrice} placeholder="0.00" />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="stock">จำนวนสต็อก</Label>
+                  <Input id="stock" name="stock" type="number" defaultValue={editingProduct?.stock} placeholder="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="minStock">จำนวนขั้นต่ำ</Label>
+                  <Input id="minStock" name="minStock" type="number" defaultValue={editingProduct?.minStock} placeholder="10" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stockUnit">หน่วยนับ</Label>
+                  <Input id="stockUnit" name="stockUnit" defaultValue={editingProduct?.stockUnit || 'ชิ้น'} placeholder="ชิ้น" />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="nameEn">ชื่อภาษาอังกฤษ</Label>
-                <Input id="nameEn" defaultValue={editingProduct?.nameEn} placeholder="Product name" />
+                <Label htmlFor="description">คำอธิบาย</Label>
+                <Textarea id="description" name="description" defaultValue={editingProduct?.description} placeholder="รายละเอียดสินค้า..." rows={3} />
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="sku">รหัสสินค้า (SKU) *</Label>
-                <Input id="sku" defaultValue={editingProduct?.sku} placeholder="SKU001" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="barcode">Barcode</Label>
-                <Input id="barcode" defaultValue={editingProduct?.barcode} placeholder="8850000000000" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">หมวดหมู่</Label>
-                <Select defaultValue={editingProduct?.categoryId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="เลือกหมวดหมู่" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockCategories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="price">ราคาขาย *</Label>
-                <Input id="price" type="number" defaultValue={editingProduct?.price} placeholder="0.00" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cost">ราคาทุน</Label>
-                <Input id="cost" type="number" defaultValue={editingProduct?.cost} placeholder="0.00" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="comparePrice">ราคาเปรียบเทียบ</Label>
-                <Input id="comparePrice" type="number" defaultValue={editingProduct?.comparePrice} placeholder="0.00" />
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="stock">จำนวนสต็อก</Label>
-                <Input id="stock" type="number" defaultValue={editingProduct?.stock} placeholder="0" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="minStock">จำนวนขั้นต่ำ</Label>
-                <Input id="minStock" type="number" defaultValue={editingProduct?.minStock} placeholder="10" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stockUnit">หน่วยนับ</Label>
-                <Input id="stockUnit" defaultValue={editingProduct?.stockUnit || 'ชิ้น'} placeholder="ชิ้น" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">คำอธิบาย</Label>
-              <Textarea id="description" defaultValue={editingProduct?.description} placeholder="รายละเอียดสินค้า..." rows={3} />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowAddDialog(false); setEditingProduct(null); }}>
-              ยกเลิก
-            </Button>
-            <Button onClick={handleSaveProduct} className="gradient-primary text-primary-foreground">
-              {editingProduct ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => { setShowAddDialog(false); setEditingProduct(null); setFormData({}); }}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" className="gradient-primary text-primary-foreground">
+                {editingProduct ? 'บันทึกการแก้ไข' : 'เพิ่มสินค้า'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

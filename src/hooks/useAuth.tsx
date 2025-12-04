@@ -1,68 +1,75 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '@/lib/api';
 
-// Role types based on the system requirements
+// Role based on the system requirements
 export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'CASHIER' | 'VIEWER';
 
 export interface User {
   id: string;
   email: string;
   fullName: string;
+  nickname?: string;
+  phone?: string;
+  employeeCode?: string;
   role: UserRole;
-  avatar?: string;
+  avatarUrl?: string;
   storeId?: string;
 }
 
 // Permission definitions
 export const PERMISSIONS: Record<string, UserRole[]> = {
   // Dashboard
-  view_dashboard: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  view_dashboard: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   view_full_analytics: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   view_financial_summary: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
-  
+
   // POS
   use_pos: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
   apply_discount: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
   apply_unlimited_discount: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   void_transaction: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
-  
+
   // Products
-  view_products: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  view_products: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   create_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   edit_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   delete_product: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   view_product_cost: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
-  
+
   // Categories
-  view_categories: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  view_categories: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   create_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   edit_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   delete_category: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
-  
+
   // Stock
-  view_stock: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER', 'VIEWER'],
+  view_stock: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   adjust_stock: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   view_stock_history: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   view_stock_value: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
-  
+
   // Reports
   view_sales_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   view_inventory_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'VIEWER'],
   view_profit_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   view_employee_report: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   export_reports: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
-  
+
   // Users
   view_users: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   create_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   edit_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   delete_user: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   manage_roles: ['SUPER_ADMIN', 'OWNER'],
-  
+
   // Settings
   view_settings: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
   edit_store_settings: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
   manage_payment_methods: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
+
+  // Bills
+  view_bills: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
 };
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -75,62 +82,7 @@ interface AuthState {
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
-  switchRole: (role: UserRole) => void; // For demo/testing
 }
-
-// Mock users for demo
-const MOCK_USERS: Record<string, { password: string; user: User }> = {
-  'owner@demo.com': {
-    password: '123456',
-    user: {
-      id: '1',
-      email: 'owner@demo.com',
-      fullName: 'เจ้าของร้าน',
-      role: 'OWNER',
-      storeId: 'store1',
-    },
-  },
-  'admin@demo.com': {
-    password: '123456',
-    user: {
-      id: '2',
-      email: 'admin@demo.com',
-      fullName: 'ผู้ดูแลระบบ',
-      role: 'ADMIN',
-      storeId: 'store1',
-    },
-  },
-  'manager@demo.com': {
-    password: '123456',
-    user: {
-      id: '3',
-      email: 'manager@demo.com',
-      fullName: 'ผู้จัดการ',
-      role: 'MANAGER',
-      storeId: 'store1',
-    },
-  },
-  'cashier@demo.com': {
-    password: '123456',
-    user: {
-      id: '4',
-      email: 'cashier@demo.com',
-      fullName: 'พนักงานขาย',
-      role: 'CASHIER',
-      storeId: 'store1',
-    },
-  },
-  'viewer@demo.com': {
-    password: '123456',
-    user: {
-      id: '5',
-      email: 'viewer@demo.com',
-      fullName: 'ผู้ดูอย่างเดียว',
-      role: 'VIEWER',
-      storeId: 'store1',
-    },
-  },
-};
 
 export const useAuth = create<AuthState>()(
   persist(
@@ -139,13 +91,14 @@ export const useAuth = create<AuthState>()(
       isAuthenticated: false,
 
       login: async (email: string, password: string) => {
-        // Mock login - replace with real API call
-        const mockUser = MOCK_USERS[email.toLowerCase()];
-        if (mockUser && mockUser.password === password) {
-          set({ user: mockUser.user, isAuthenticated: true });
+        try {
+          const response = await api.login({ email, password });
+          set({ user: response.user, isAuthenticated: true });
           return true;
+        } catch (error) {
+          console.error('Login failed', error);
+          return false;
         }
-        return false;
       },
 
       logout: () => {
@@ -167,13 +120,6 @@ export const useAuth = create<AuthState>()(
       hasAllPermissions: (permissions: Permission[]) => {
         const { hasPermission } = get();
         return permissions.every((p) => hasPermission(p));
-      },
-
-      switchRole: (role: UserRole) => {
-        const { user } = get();
-        if (user) {
-          set({ user: { ...user, role } });
-        }
       },
     }),
     {

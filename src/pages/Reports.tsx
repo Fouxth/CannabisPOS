@@ -1,508 +1,416 @@
-import { useState } from 'react';
-import { Calendar, Download, TrendingUp, ShoppingCart, Package, Users, DollarSign, FileText, Filter, Banknote, ArrowRightLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
-import { mockDashboardStats, mockProducts, mockCategories, mockSalesByPayment } from '@/data/mockData';
-import { toast } from 'sonner';
-import { PermissionGate } from '@/components/ProtectedRoute';
+    TrendingUp,
+    TrendingDown,
+    DollarSign,
+    ShoppingCart,
+    Package,
+    AlertTriangle,
+    Calendar,
+    Users,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { api } from '@/lib/api';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(value);
+    return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 };
 
-// Mock data for reports
-const weeklyData = [
-  { day: 'จันทร์', sales: 25800, orders: 42 },
-  { day: 'อังคาร', sales: 28450, orders: 45 },
-  { day: 'พุธ', sales: 22100, orders: 38 },
-  { day: 'พฤหัสบดี', sales: 31200, orders: 52 },
-  { day: 'ศุกร์', sales: 38500, orders: 65 },
-  { day: 'เสาร์', sales: 42800, orders: 72 },
-  { day: 'อาทิตย์', sales: 35600, orders: 58 },
-];
+const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+};
 
-const categoryData = mockCategories.map((cat, i) => ({
-  name: cat.name,
-  value: [35, 25, 20, 12, 5, 3][i] || 5,
-  color: cat.color,
-}));
-
-const paymentData = [
-  { name: 'เงินสด', value: 56, color: '#10B981' },
-  { name: 'โอนเงิน', value: 44, color: '#3B82F6' },
-];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
 
 export default function Reports() {
-  const [dateRange, setDateRange] = useState('week');
-  const [showSalesDetail, setShowSalesDetail] = useState(false);
+    const [dateRange, setDateRange] = useState<'today' | 'week' | 'month' | 'year'>('month');
 
-  const totalSales = mockSalesByPayment.cash + mockSalesByPayment.transfer;
-  const cashPercent = ((mockSalesByPayment.cash / totalSales) * 100).toFixed(1);
-  const transferPercent = ((mockSalesByPayment.transfer / totalSales) * 100).toFixed(1);
+    const { data: reportsData, isLoading } = useQuery({
+        queryKey: ['reports', dateRange],
+        queryFn: () => api.getReportsOverview(),
+    });
 
-  const handleExport = (type: string) => {
-    toast.success(`กำลังส่งออกรายงาน ${type}`);
-  };
+    // Calculate financial metrics
+    const financialMetrics = useMemo(() => {
+        if (!reportsData) return null;
 
-  return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold font-display">รายงาน</h1>
-          <p className="text-sm text-muted-foreground">วิเคราะห์ข้อมูลการขายและสต็อก</p>
+        const totalIncome = reportsData.financials?.totalIncome || reportsData.totalRevenue || 0;
+        const totalExpenses = reportsData.financials?.totalExpenses || 0;
+        const totalCost = reportsData.totalCost || 0;
+        const netProfit = totalIncome - totalCost - totalExpenses;
+
+        return {
+            totalIncome,
+            totalExpenses,
+            totalCost,
+            netProfit,
+            transactions: reportsData.financials?.transactions || [],
+        };
+    }, [reportsData]);
+
+    if (isLoading) {
+        return (
+            <div className="space-y-4">
+                <Skeleton className="h-12 w-1/3" />
+                <Skeleton className="h-[600px] w-full" />
+            </div>
+        );
+    }
+
+    if (!reportsData) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">ไม่สามารถโหลดข้อมูลได้</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold font-display">รายงานการขายและประสิทธิภาพธุรกิจ</h1>
+                    <p className="text-muted-foreground">ภาพรวมและข้อมูลเชิงลึกทางธุรกิจ</p>
+                </div>
+            </div>
+
+            <Tabs defaultValue="business" className="space-y-6">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="business">Business Insights</TabsTrigger>
+                    <TabsTrigger value="financial">Financial Statement</TabsTrigger>
+                </TabsList>
+
+                {/* Business Insights Tab */}
+                <TabsContent value="business" className="space-y-6">
+                    {/* KPI Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">ยอดขายรวม</CardTitle>
+                                <DollarSign className="h-4 w-4 text-emerald-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-emerald-600">
+                                    ฿{formatCurrency(reportsData.totalRevenue)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    จากบิลทั้งหมด {reportsData.monthlyBreakdown?.reduce((sum, m) => sum + m.orders, 0) || 0} ใบ
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">ต้นทุนรวม</CardTitle>
+                                <Package className="h-4 w-4 text-orange-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-orange-600">
+                                    ฿{formatCurrency(reportsData.totalCost)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    ต้นทุนสินค้าที่ขาย (COGS)
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">กำไรขั้นต้น</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-blue-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-blue-600">
+                                    ฿{formatCurrency(reportsData.totalProfit)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Margin {reportsData.profitMargin.toFixed(1)}%
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">สินค้าในสต็อก</CardTitle>
+                                <ShoppingCart className="h-4 w-4 text-purple-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{reportsData.inventory.totalProducts}</div>
+                                <p className="text-xs text-destructive mt-1">
+                                    ใกล้หมด {reportsData.inventory.lowStockCount} รายการ
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Alerts Section */}
+                    {reportsData.alerts && reportsData.alerts.length > 0 && (
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-semibold">⚠️ การแจ้งเตือนและความเสี่ยง</h3>
+                            <div className="grid gap-3">
+                                {reportsData.alerts.slice(0, 5).map((alert, index) => (
+                                    <Alert
+                                        key={index}
+                                        variant={alert.severity === 'critical' ? 'destructive' : 'default'}
+                                        className="glass"
+                                    >
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertTitle>{alert.title}</AlertTitle>
+                                        <AlertDescription>{alert.message}</AlertDescription>
+                                    </Alert>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Charts Section */}
+                    <div className="grid gap-6 lg:grid-cols-2">
+                        {/* Sales Trend */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle>แนวโน้มยอดขาย</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <LineChart data={reportsData.monthlyBreakdown || []}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="month" />
+                                        <YAxis />
+                                        <Tooltip formatter={(value) => `฿${formatCurrency(Number(value))}`} />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2} />
+                                        <Line type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+
+                        {/* Category Breakdown */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle>สัดส่วนยอดขายตามหมวดหมู่</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={reportsData.categoryBreakdown || []}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={(entry) => entry.name}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {(reportsData.categoryBreakdown || []).map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip formatter={(value) => `฿${formatCurrency(Number(value))}`} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Top Products */}
+                    <Card className="glass">
+                        <CardHeader>
+                            <CardTitle>สินค้าขายดี</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>สินค้า</TableHead>
+                                        <TableHead className="text-right">จำนวนขาย</TableHead>
+                                        <TableHead className="text-right">รายได้</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {(reportsData.topProducts || []).slice(0, 5).map((item, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell className="font-medium">{item.product.name}</TableCell>
+                                            <TableCell className="text-right">{item.quantity}</TableCell>
+                                            <TableCell className="text-right text-emerald-600">
+                                                ฿{formatCurrency(item.revenue)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    {/* Recommendations */}
+                    {reportsData.recommendations && reportsData.recommendations.length > 0 && (
+                        <Card className="glass border-blue-200 bg-blue-50/50">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <TrendingUp className="h-5 w-5 text-blue-600" />
+                                    คำแนะนำเชิงรุก
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {reportsData.recommendations.slice(0, 3).map((rec, index) => (
+                                    <div key={index} className="p-4 bg-white rounded-lg border">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <Badge variant={rec.priority === 'critical' ? 'destructive' : 'default'}>
+                                                        {rec.priority}
+                                                    </Badge>
+                                                    <span className="text-sm text-muted-foreground">{rec.category}</span>
+                                                </div>
+                                                <h4 className="font-semibold">{rec.title}</h4>
+                                                <p className="text-sm text-muted-foreground mt-1">{rec.description}</p>
+                                                <p className="text-sm font-medium text-blue-600 mt-2">
+                                                    💡 {rec.action}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
+
+                {/* Financial Statement Tab */}
+                <TabsContent value="financial" className="space-y-6">
+                    {/* Financial Summary Cards */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">รายรับเดือนนี้</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-emerald-600">
+                                    ฿{formatCurrency(financialMetrics?.totalIncome || 0)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">จากยอดขายทั้งหมด</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">รายจ่ายเดือนนี้</CardTitle>
+                                <TrendingDown className="h-4 w-4 text-rose-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-rose-600">
+                                    ฿{formatCurrency(financialMetrics?.totalExpenses || 0)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">ค่าใช้จ่ายดำเนินงาน</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">ต้นทุนสินค้า</CardTitle>
+                                <Package className="h-4 w-4 text-orange-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-orange-600">
+                                    ฿{formatCurrency(financialMetrics?.totalCost || 0)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">COGS</p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="glass">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">กำไรสุทธิ</CardTitle>
+                                <DollarSign className="h-4 w-4 text-blue-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-bold ${(financialMetrics?.netProfit || 0) >= 0 ? 'text-blue-600' : 'text-rose-600'}`}>
+                                    ฿{formatCurrency(financialMetrics?.netProfit || 0)}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    รายรับ - ต้นทุน - รายจ่าย
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Financial Movements Table */}
+                    <Card className="glass">
+                        <CardHeader>
+                            <CardTitle>รายละเอียดการเคลื่อนไหวทางการเงิน</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>วันที่</TableHead>
+                                        <TableHead>รายละเอียด</TableHead>
+                                        <TableHead>หมวดหมู่</TableHead>
+                                        <TableHead className="text-right">จำนวนเงิน</TableHead>
+                                        <TableHead>ผู้บันทึก</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {financialMetrics?.transactions && financialMetrics.transactions.length > 0 ? (
+                                        financialMetrics.transactions.slice(0, 20).map((transaction, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                                                        {formatDate(transaction.date)}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{transaction.details}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="secondary">{transaction.category}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">
+                                                    <span className={transaction.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}>
+                                                        {transaction.type === 'income' ? '+' : '-'}฿{formatCurrency(transaction.amount)}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="h-4 w-4" />
+                                                        {transaction.recorder}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                                ไม่มีข้อมูลการเคลื่อนไหวทางการเงิน
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-full sm:w-40">
-              <Calendar className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">วันนี้</SelectItem>
-              <SelectItem value="week">สัปดาห์นี้</SelectItem>
-              <SelectItem value="month">เดือนนี้</SelectItem>
-              <SelectItem value="year">ปีนี้</SelectItem>
-            </SelectContent>
-          </Select>
-          <PermissionGate permissions={['export_reports']}>
-            <Button variant="outline" onClick={() => handleExport('Excel')} className="flex-1 sm:flex-none">
-              <Download className="h-4 w-4 mr-2" />
-              ส่งออก
-            </Button>
-          </PermissionGate>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card 
-          className="glass animate-slide-up cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-          onClick={() => setShowSalesDetail(true)}
-        >
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="rounded-xl p-2 sm:p-3 bg-primary/10">
-                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <Badge variant="outline" className="text-success text-xs">+15.2%</Badge>
-            </div>
-            <div className="mt-3 sm:mt-4">
-              <p className="text-lg sm:text-2xl font-bold font-display">฿224,450</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">ยอดขายรวม</p>
-              <p className="text-[10px] sm:text-xs text-primary mt-1">คลิกดูรายละเอียด</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <PermissionGate 
-          permissions={['view_profit_report']}
-          fallback={
-            <Card className="glass animate-slide-up opacity-50" style={{ animationDelay: '100ms' }}>
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-xl p-2 sm:p-3 bg-success/10">
-                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                  </div>
-                  <Badge variant="outline" className="text-xs">🔒</Badge>
-                </div>
-                <div className="mt-3 sm:mt-4">
-                  <p className="text-lg sm:text-2xl font-bold font-display">---</p>
-                  <p className="text-xs sm:text-sm text-muted-foreground">กำไรรวม</p>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ต้องการสิทธิ์</p>
-                </div>
-              </CardContent>
-            </Card>
-          }
-        >
-          <Card className="glass animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center justify-between">
-                <div className="rounded-xl p-2 sm:p-3 bg-success/10">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                </div>
-                <Badge variant="outline" className="text-success text-xs">+8.5%</Badge>
-              </div>
-              <div className="mt-3 sm:mt-4">
-                <p className="text-lg sm:text-2xl font-bold font-display">฿89,780</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">กำไรรวม</p>
-              </div>
-            </CardContent>
-          </Card>
-        </PermissionGate>
-        
-        <Card className="glass animate-slide-up" style={{ animationDelay: '200ms' }}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="rounded-xl p-2 sm:p-3 bg-info/10">
-                <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
-              </div>
-              <Badge variant="outline" className="text-success text-xs">+12.3%</Badge>
-            </div>
-            <div className="mt-3 sm:mt-4">
-              <p className="text-lg sm:text-2xl font-bold font-display">372</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">รายการขาย</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="glass animate-slide-up" style={{ animationDelay: '300ms' }}>
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="rounded-xl p-2 sm:p-3 bg-accent/10">
-                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-              </div>
-              <Badge variant="outline" className="text-success text-xs">+5.8%</Badge>
-            </div>
-            <div className="mt-3 sm:mt-4">
-              <p className="text-lg sm:text-2xl font-bold font-display">฿603</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">ค่าเฉลี่ยต่อบิล</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sales Detail Dialog */}
-      <Dialog open={showSalesDetail} onOpenChange={setShowSalesDetail}>
-        <DialogContent className="sm:max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="font-display">รายละเอียดยอดขาย</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Total */}
-            <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-              <p className="text-sm text-muted-foreground">ยอดขายรวม</p>
-              <p className="text-2xl sm:text-3xl font-bold font-display text-primary">
-                ฿224,450
-              </p>
-            </div>
-
-            {/* Breakdown */}
-            <div className="space-y-3">
-              {/* Cash */}
-              <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-success/10 border border-success/20">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="p-1.5 sm:p-2 rounded-lg bg-success/20">
-                    <Banknote className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm sm:text-base">เงินสด</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">{cashPercent}%</p>
-                  </div>
-                </div>
-                <p className="text-base sm:text-xl font-bold font-display text-success">
-                  ฿125,692
-                </p>
-              </div>
-
-              {/* Transfer */}
-              <div className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-info/10 border border-info/20">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className="p-1.5 sm:p-2 rounded-lg bg-info/20">
-                    <ArrowRightLeft className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm sm:text-base">โอนเงิน</p>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">{transferPercent}%</p>
-                  </div>
-                </div>
-                <p className="text-base sm:text-xl font-bold font-display text-info">
-                  ฿98,758
-                </p>
-              </div>
-            </div>
-
-            {/* Summary bar */}
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">สัดส่วนการชำระเงิน</p>
-              <div className="h-3 sm:h-4 rounded-full overflow-hidden flex">
-                <div 
-                  className="bg-success h-full transition-all"
-                  style={{ width: `${cashPercent}%` }}
-                />
-                <div 
-                  className="bg-info h-full transition-all"
-                  style={{ width: `${transferPercent}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] sm:text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-success" />
-                  เงินสด {cashPercent}%
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-info" />
-                  โอนเงิน {transferPercent}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Tabs defaultValue="sales" className="space-y-4 sm:space-y-6">
-        <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
-          <TabsTrigger value="sales" className="text-xs sm:text-sm">รายงานการขาย</TabsTrigger>
-          <TabsTrigger value="products" className="text-xs sm:text-sm">รายงานสินค้า</TabsTrigger>
-          <TabsTrigger value="inventory" className="text-xs sm:text-sm">รายงานสต็อก</TabsTrigger>
-        </TabsList>
-
-        {/* Sales Report */}
-        <TabsContent value="sales" className="space-y-4 sm:space-y-6">
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            {/* Sales Trend */}
-            <Card className="glass animate-slide-up">
-              <CardHeader className="pb-2 sm:pb-4">
-                <CardTitle className="font-display text-base sm:text-lg">ยอดขายรายวัน</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">แนวโน้มยอดขายในสัปดาห์นี้</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[200px] sm:h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={weeklyData}>
-                      <defs>
-                        <linearGradient id="salesGradient2" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={(v) => `฿${v/1000}k`} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                        formatter={(value: number) => [formatCurrency(value), 'ยอดขาย']}
-                      />
-                      <Area type="monotone" dataKey="sales" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#salesGradient2)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Payment Methods */}
-            <Card className="glass animate-slide-up" style={{ animationDelay: '100ms' }}>
-              <CardHeader className="pb-2 sm:pb-4">
-                <CardTitle className="font-display text-base sm:text-lg">ช่องทางการชำระเงิน</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">สัดส่วนการชำระเงินแต่ละช่องทาง</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[200px] sm:h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={paymentData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {paymentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [`${value}%`, 'สัดส่วน']} />
-                      <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Orders by Hour */}
-          <Card className="glass animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <CardHeader className="pb-2 sm:pb-4">
-              <CardTitle className="font-display text-base sm:text-lg">จำนวนรายการขายตามชั่วโมง</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">ช่วงเวลาที่มีการขายมากที่สุด</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[180px] sm:h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={mockDashboardStats.salesByHour}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="hour" stroke="hsl(var(--muted-foreground))" fontSize={10} tickFormatter={(h) => `${h}:00`} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }}
-                      formatter={(value: number) => [`${value} รายการ`, 'จำนวน']}
-                      labelFormatter={(h) => `เวลา ${h}:00 น.`}
-                    />
-                    <Bar dataKey="orders" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Products Report */}
-        <TabsContent value="products" className="space-y-4 sm:space-y-6">
-          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-            {/* Category Distribution */}
-            <Card className="glass animate-slide-up">
-              <CardHeader className="pb-2 sm:pb-4">
-                <CardTitle className="font-display text-base sm:text-lg">ยอดขายตามหมวดหมู่</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">สัดส่วนการขายแต่ละหมวดหมู่</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[200px] sm:h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [`${value}%`, 'สัดส่วน']} />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Products */}
-            <Card className="glass animate-slide-up" style={{ animationDelay: '100ms' }}>
-              <CardHeader className="pb-2 sm:pb-4">
-                <CardTitle className="font-display text-base sm:text-lg">สินค้าขายดี Top 10</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">สินค้าที่มียอดขายสูงสุด</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 sm:space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
-                  {mockProducts.slice(0, 5).map((product, index) => (
-                    <div key={product.id} className="flex items-center gap-2 sm:gap-3">
-                      <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] sm:text-xs font-bold text-primary">
-                        {index + 1}
-                      </span>
-                      <img src={product.imageUrl} alt={product.name} className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg object-cover" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-xs sm:text-sm truncate">{product.name}</p>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">{product.sku}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-xs sm:text-sm">{product.totalSold}</p>
-                        <p className="text-[10px] sm:text-xs text-muted-foreground">ชิ้น</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Inventory Report */}
-        <TabsContent value="inventory" className="space-y-4 sm:space-y-6">
-          <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-3">
-            <Card className="glass animate-slide-up">
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl p-2 sm:p-3 bg-primary/10">
-                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xl sm:text-2xl font-bold font-display">{mockProducts.length}</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">สินค้าทั้งหมด</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass animate-slide-up" style={{ animationDelay: '100ms' }}>
-              <CardContent className="p-4 sm:p-5">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-xl p-2 sm:p-3 bg-warning/10">
-                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-xl sm:text-2xl font-bold font-display text-warning">3</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">สินค้าใกล้หมด</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <PermissionGate 
-              permissions={['view_stock_value']}
-              fallback={
-                <Card className="glass animate-slide-up opacity-50" style={{ animationDelay: '200ms' }}>
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-xl p-2 sm:p-3 bg-success/10">
-                        <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                      </div>
-                      <div>
-                        <p className="text-xl sm:text-2xl font-bold font-display">🔒</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground">มูลค่าสต็อก</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              }
-            >
-              <Card className="glass animate-slide-up" style={{ animationDelay: '200ms' }}>
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl p-2 sm:p-3 bg-success/10">
-                      <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-xl sm:text-2xl font-bold font-display">฿285,400</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">มูลค่าสต็อก</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </PermissionGate>
-          </div>
-
-          <Card className="glass animate-slide-up" style={{ animationDelay: '300ms' }}>
-            <CardHeader className="pb-2 sm:pb-4">
-              <CardTitle className="font-display text-base sm:text-lg">สินค้าที่ต้องเติมสต็อก</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">สินค้าที่มีจำนวนต่ำกว่าขั้นต่ำ</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 sm:space-y-3">
-                {mockProducts.filter(p => p.stock <= p.minStock).map((product) => (
-                  <div key={product.id} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg bg-muted/50">
-                    <img src={product.imageUrl} alt={product.name} className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs sm:text-sm truncate">{product.name}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">{product.sku}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant="destructive" className="text-[10px] sm:text-xs">เหลือ {product.stock} {product.stockUnit}</Badge>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">ขั้นต่ำ: {product.minStock}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+    );
 }

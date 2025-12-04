@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { CartItem, Product, User, Category, PaymentMethod } from '@/types';
+import { CartItem, Product, User } from '@/types';
 
 interface POSState {
   // User
@@ -12,7 +12,7 @@ interface POSState {
   updateCartItem: (id: string, updates: Partial<CartItem>) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
-  
+
   // Cart calculations
   getSubtotal: () => number;
   getDiscount: () => number;
@@ -37,24 +37,20 @@ interface POSState {
   setSearchQuery: (query: string) => void;
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
+  taxRate: number;
+  setTaxRate: (rate: number) => void;
 }
 
 export const usePOSStore = create<POSState>((set, get) => ({
-  currentUser: {
-    id: '1',
-    employeeCode: 'E001',
-    email: 'cashier@store.com',
-    fullName: 'สมชาย ใจดี',
-    role: 'CASHIER',
-    isActive: true,
-  },
+  currentUser: null, // Will be set by authentication system
   setCurrentUser: (user) => set({ currentUser: user }),
+
 
   cart: [],
   addToCart: (product) => {
     const cart = get().cart;
     const existingItem = cart.find((item) => item.product.id === product.id);
-    
+
     if (existingItem) {
       set({
         cart: cart.map((item) =>
@@ -109,7 +105,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
   getTax: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
-    return (subtotal - discount) * 0.07; // 7% VAT
+    const rate = get().taxRate;
+    return (subtotal - discount) * (rate / 100);
   },
   getTotal: () => {
     const subtotal = get().getSubtotal();
@@ -133,4 +130,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   viewMode: 'grid',
   setViewMode: (mode) => set({ viewMode: mode }),
+  taxRate: 7,
+  setTaxRate: (rate) => set({ taxRate: rate }),
 }));

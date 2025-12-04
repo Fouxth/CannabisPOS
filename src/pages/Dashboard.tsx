@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   TrendingUp, 
   ShoppingCart, 
@@ -14,10 +15,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { mockDashboardStats, mockProducts, mockSalesByPayment } from '@/data/mockData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(value);
@@ -25,16 +27,41 @@ const formatCurrency = (value: number) => {
 
 export default function Dashboard() {
   const [showSalesDetail, setShowSalesDetail] = useState(false);
-  const lowStockProducts = mockProducts.filter(p => p.stock <= p.minStock);
-  
-  const totalSales = mockSalesByPayment.cash + mockSalesByPayment.transfer;
-  const cashPercent = ((mockSalesByPayment.cash / totalSales) * 100).toFixed(1);
-  const transferPercent = ((mockSalesByPayment.transfer / totalSales) * 100).toFixed(1);
+  const { data: dashboard, isLoading, isError } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: api.getDashboard,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-[180px] w-full" />
+        <Skeleton className="h-[300px] w-full" />
+      </div>
+    );
+  }
+
+  if (!dashboard || isError) {
+    return (
+      <div className="text-center text-muted-foreground py-10">
+        ไม่สามารถโหลดข้อมูลแดชบอร์ดได้
+      </div>
+    );
+  }
+
+  const lowStockProducts = dashboard.lowStockProducts;
+  const salesByPayment = dashboard.salesByPayment || {};
+  const cashTotal = salesByPayment.cash ?? 0;
+  const transferTotal = salesByPayment.transfer ?? 0;
+  const totalSales = Object.values(salesByPayment).reduce((sum, value) => sum + value, 0);
+  const cashPercent = totalSales ? ((cashTotal / totalSales) * 100).toFixed(1) : '0.0';
+  const transferPercent = totalSales ? ((transferTotal / totalSales) * 100).toFixed(1) : '0.0';
 
   const statCards = [
     {
       title: 'ยอดขายวันนี้',
-      value: mockDashboardStats.todaySales,
+      value: dashboard.todaySales,
       change: 12.5,
       icon: DollarSign,
       format: 'currency' as const,
@@ -43,7 +70,7 @@ export default function Dashboard() {
     },
     {
       title: 'รายการขายวันนี้',
-      value: mockDashboardStats.todayOrders,
+      value: dashboard.todayOrders,
       change: 8.2,
       icon: ShoppingCart,
       format: 'number' as const,
@@ -52,7 +79,7 @@ export default function Dashboard() {
     },
     {
       title: 'ค่าเฉลี่ยต่อบิล',
-      value: mockDashboardStats.todayAvgOrder,
+      value: dashboard.todayAvgOrder,
       change: 3.8,
       icon: TrendingUp,
       format: 'currency' as const,
@@ -61,7 +88,7 @@ export default function Dashboard() {
     },
     {
       title: 'สินค้าใกล้หมด',
-      value: mockDashboardStats.lowStockCount,
+      value: dashboard.lowStockCount,
       change: -2,
       icon: AlertTriangle,
       format: 'number' as const,
@@ -151,7 +178,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-xl font-bold font-display text-success">
-                  {formatCurrency(mockSalesByPayment.cash)}
+                  {formatCurrency(cashTotal)}
                 </p>
               </div>
 
@@ -167,7 +194,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <p className="text-xl font-bold font-display text-info">
-                  {formatCurrency(mockSalesByPayment.transfer)}
+                  {formatCurrency(transferTotal)}
                 </p>
               </div>
             </div>
@@ -211,7 +238,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockDashboardStats.salesByHour}>
+                <AreaChart data={dashboard.salesByHour}>
                   <defs>
                     <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
@@ -262,7 +289,7 @@ export default function Dashboard() {
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
-                  data={mockDashboardStats.topProducts} 
+                  data={dashboard.topProducts} 
                   layout="vertical"
                   margin={{ left: 0, right: 20 }}
                 >
@@ -329,7 +356,6 @@ export default function Dashboard() {
                     />
                     <div>
                       <p className="font-medium text-sm">{product.name}</p>
-                      <p className="text-xs text-muted-foreground">{product.sku}</p>
                     </div>
                   </div>
                   <Badge variant="destructive" className="font-mono">
@@ -357,28 +383,28 @@ export default function Dashboard() {
               <div className="rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 p-6 border border-primary/20">
                 <p className="text-sm text-muted-foreground mb-2">ยอดขายวันนี้</p>
                 <p className="text-2xl font-bold font-display text-primary">
-                  {formatCurrency(mockDashboardStats.todaySales)}
+                  {formatCurrency(dashboard.todaySales)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {mockDashboardStats.todayOrders} รายการ
+                  {dashboard.todayOrders} รายการ
                 </p>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-success/20 to-success/5 p-6 border border-success/20">
                 <p className="text-sm text-muted-foreground mb-2">ยอดขายสัปดาห์นี้</p>
                 <p className="text-2xl font-bold font-display text-success">
-                  {formatCurrency(mockDashboardStats.weekSales)}
+                  {formatCurrency(dashboard.weekSales)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  เฉลี่ย {formatCurrency(mockDashboardStats.weekSales / 7)}/วัน
+                  เฉลี่ย {formatCurrency(dashboard.weekSales / 7)}/วัน
                 </p>
               </div>
               <div className="rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 p-6 border border-accent/20">
                 <p className="text-sm text-muted-foreground mb-2">ยอดขายเดือนนี้</p>
                 <p className="text-2xl font-bold font-display text-accent">
-                  {formatCurrency(mockDashboardStats.monthSales)}
+                  {formatCurrency(dashboard.monthSales)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  เฉลี่ย {formatCurrency(mockDashboardStats.monthSales / 30)}/วัน
+                  เฉลี่ย {formatCurrency(dashboard.monthSales / 30)}/วัน
                 </p>
               </div>
             </div>

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, Filter, Plus, Minus, AlertTriangle, Package, ArrowUpDown, History, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,64 +31,94 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockProducts, mockCategories } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { api } from '@/lib/api';
+import { Product, StockMovement } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 };
 
-// Mock stock movements
-const mockMovements = [
-  { id: '1', productId: '1', type: 'sale', change: -2, before: 52, after: 50, user: 'สมชาย', reason: 'ขายสินค้า #INV20251128001', createdAt: '2025-11-28T14:30:00' },
-  { id: '2', productId: '3', type: 'restock', change: 20, before: -12, after: 8, user: 'สมหญิง', reason: 'เติมสต็อกจาก Supplier A', createdAt: '2025-11-28T10:15:00' },
-  { id: '3', productId: '4', type: 'sale', change: -5, before: 105, after: 100, user: 'สมชาย', reason: 'ขายสินค้า #INV20251128002', createdAt: '2025-11-28T09:45:00' },
-  { id: '4', productId: '2', type: 'adjustment', change: -3, before: 38, after: 35, user: 'ผู้จัดการ', reason: 'สินค้าเสียหาย', createdAt: '2025-11-27T16:00:00' },
-];
-
 export default function Stock() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAdjustDialog, setShowAdjustDialog] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<typeof mockProducts[0] | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add');
   const [adjustmentQuantity, setAdjustmentQuantity] = useState('');
 
-  const lowStockProducts = mockProducts.filter(p => p.stock <= p.minStock);
-  const outOfStockProducts = mockProducts.filter(p => p.stock === 0);
-  const totalStockValue = mockProducts.reduce((sum, p) => sum + (p.stock * p.cost), 0);
+  const queryClient = useQueryClient();
 
-  const filteredProducts = mockProducts.filter((product) => {
-    return !searchQuery ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+  const { data: products = [], isLoading: productsLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: api.getProducts,
   });
 
-  const handleAdjustStock = () => {
-    if (!selectedProduct || !adjustmentQuantity) return;
-    
-    const qty = parseInt(adjustmentQuantity);
-    let newStock = selectedProduct.stock;
-    
-    switch (adjustmentType) {
-      case 'add':
-        newStock = selectedProduct.stock + qty;
-        break;
-      case 'subtract':
-        newStock = selectedProduct.stock - qty;
-        break;
-      case 'set':
-        newStock = qty;
-        break;
-    }
-    
-    toast.success(`ปรับสต็อก ${selectedProduct.name} เป็น ${newStock} ${selectedProduct.stockUnit}`);
-    setShowAdjustDialog(false);
-    setSelectedProduct(null);
-    setAdjustmentQuantity('');
+  const { data: movements = [], isLoading: movementsLoading } = useQuery({
+    queryKey: ['stock-movements'],
+    queryFn: api.getStockMovements,
+  });
+
+  const adjustStockMutation = useMutation({
+    mutationFn: api.adjustStock,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
+      toast.success('ปรับสต็อกสำเร็จ');
+      setShowAdjustDialog(false);
+      setSelectedProduct(null);
+      setAdjustmentQuantity('');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'เกิดข้อผิดพลาดในการปรับสต็อก');
+    },
+  });
+
+  const lowStockProducts = useMemo(() => products.filter((p) => p.stock <= p.minStock), [products]);
+  const outOfStockProducts = useMemo(() => products.filter((p) => p.stock === 0), [products]);
+  const totalStockValue = useMemo(() => products.reduce((sum, p) => sum + p.stock * p.cost, 0), [products]);
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      return !searchQuery ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+  }, [products, searchQuery]);
+
+  const isLoading = productsLoading || movementsLoading;
+
+  const handleAdjustStock = (form: HTMLFormElement) => {
+    if (!selectedProduct) return;
+
+    const quantity = parseInt((form.elements.namedItem('quantity') as HTMLInputElement).value);
+    const reason = (form.elements.namedItem('reason') as HTMLTextAreaElement).value;
+
+    // Get current user ID - you may need to get this from auth context
+    // For now, using a placeholder
+    const userId = '1'; // TODO: Get from auth context
+
+    adjustStockMutation.mutate({
+      productId: selectedProduct.id,
+      userId,
+      adjustmentType,
+      quantity,
+      reason: reason || `ปรับสต็อก (${adjustmentType})`,
+    });
   };
+
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-[200px] w-full" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -106,13 +137,13 @@ export default function Stock() {
                 <Package className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold font-display">{mockProducts.length}</p>
+                <p className="text-2xl font-bold font-display">{products.length}</p>
                 <p className="text-sm text-muted-foreground">สินค้าทั้งหมด</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="glass animate-slide-up" style={{ animationDelay: '100ms' }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
@@ -126,7 +157,7 @@ export default function Stock() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="glass animate-slide-up" style={{ animationDelay: '200ms' }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
@@ -140,7 +171,7 @@ export default function Stock() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="glass animate-slide-up" style={{ animationDelay: '300ms' }}>
           <CardContent className="p-5">
             <div className="flex items-center gap-3">
@@ -170,7 +201,7 @@ export default function Stock() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="ค้นหาสินค้า, SKU..."
+                  placeholder="ค้นหาสินค้า..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -216,7 +247,6 @@ export default function Stock() {
                         <TableCell>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-sm text-muted-foreground font-mono">{product.sku}</p>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -289,9 +319,9 @@ export default function Stock() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {mockMovements.map((movement, index) => {
-                  const product = mockProducts.find(p => p.id === movement.productId);
-                  const isPositive = movement.change > 0;
+                {movements.map((movement, index) => {
+                  const product = products.find(p => p.id === movement.productId) || movement.product;
+                  const isPositive = movement.quantityChange > 0;
 
                   return (
                     <div
@@ -323,14 +353,14 @@ export default function Stock() {
                           'font-bold',
                           isPositive ? 'text-success' : 'text-destructive'
                         )}>
-                          {isPositive ? '+' : ''}{movement.change}
+                          {isPositive ? '+' : ''}{movement.quantityChange}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {movement.before} → {movement.after}
+                          {movement.previousQuantity} → {movement.newQuantity}
                         </p>
                       </div>
                       <div className="text-right text-sm">
-                        <p className="text-muted-foreground">{movement.user}</p>
+                        <p className="text-muted-foreground">{movement.user?.fullName}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(movement.createdAt), 'dd/MM HH:mm', { locale: th })}
                         </p>
@@ -401,29 +431,35 @@ export default function Stock() {
                 <Label htmlFor="quantity">จำนวน</Label>
                 <Input
                   id="quantity"
+                  name="quantity"
                   type="number"
                   placeholder="0"
-                  value={adjustmentQuantity}
-                  onChange={(e) => setAdjustmentQuantity(e.target.value)}
+                  defaultValue={adjustmentQuantity}
                   className="text-2xl h-14 text-center font-bold"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="reason">เหตุผล</Label>
-                <Textarea id="reason" placeholder="เช่น เติมสต็อก, สินค้าเสียหาย..." rows={2} />
+                <Textarea id="reason" name="reason" placeholder="เช่น เติมสต็อก, สินค้าเสียหาย..." rows={2} />
               </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>
-              ยกเลิก
-            </Button>
-            <Button onClick={handleAdjustStock} className="gradient-primary text-primary-foreground">
-              บันทึกการปรับ
-            </Button>
-          </DialogFooter>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleAdjustStock(e.currentTarget);
+          }}>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setShowAdjustDialog(false); setSelectedProduct(null); setAdjustmentQuantity(''); }}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" className="gradient-primary text-primary-foreground">
+                ยืนยันปรับสต็อก
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
