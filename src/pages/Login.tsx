@@ -74,8 +74,8 @@ export default function Login() {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    type="email"
-                    placeholder="example@email.com"
+                    type={email === 'dxv4th' ? 'text' : 'email'}
+                    placeholder="example@email.com หรือ username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"

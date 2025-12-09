@@ -39,6 +39,7 @@ import { Expense } from '@/types';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/hooks/useAuth';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
@@ -65,7 +66,8 @@ export default function Expenses() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [showAddDialog, setShowAddDialog] = useState(false);
-    const [currentUserId] = useState('d245634a-276d-4680-9322-14c0de6830f5'); // Cashier user ID
+    const [selectedCategoryValue, setSelectedCategoryValue] = useState('other'); // For add dialog
+    const { user } = useAuth(); // Get logged-in user
 
     const queryClient = useQueryClient();
 
@@ -81,6 +83,7 @@ export default function Expenses() {
             queryClient.invalidateQueries({ queryKey: ['reports'] });
             toast.success('บันทึกรายจ่ายสำเร็จ');
             setShowAddDialog(false);
+            setSelectedCategoryValue('other'); // Reset category
         },
         onError: (error: any) => {
             toast.error(error.message || 'เกิดข้อผิดพลาดในการบันทึกรายจ่าย');
@@ -120,14 +123,18 @@ export default function Expenses() {
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!user?.id) {
+            toast.error('ไม่พบข้อมูลผู้ใช้');
+            return;
+        }
         const form = e.currentTarget;
         const data: Partial<Expense> = {
             title: (form.elements.namedItem('title') as HTMLInputElement).value,
             amount: parseFloat((form.elements.namedItem('amount') as HTMLInputElement).value),
-            category: (form.elements.namedItem('category') as HTMLSelectElement).value as Expense['category'],
+            category: selectedCategoryValue as Expense['category'], // Use state instead of form element
             date: (form.elements.namedItem('date') as HTMLInputElement).value,
             notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value || undefined,
-            userId: currentUserId,
+            userId: user.id, // Use logged-in user's ID
         };
         createMutation.mutate(data);
     };
@@ -330,7 +337,7 @@ export default function Expenses() {
 
                             <div className="space-y-2">
                                 <Label htmlFor="category">หมวดหมู่ *</Label>
-                                <Select name="category" defaultValue="other" required>
+                                <Select value={selectedCategoryValue} onValueChange={setSelectedCategoryValue}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="เลือกหมวดหมู่" />
                                     </SelectTrigger>
@@ -342,6 +349,7 @@ export default function Expenses() {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                <input type="hidden" name="category" value={selectedCategoryValue} />
                             </div>
 
                             <div className="space-y-2">

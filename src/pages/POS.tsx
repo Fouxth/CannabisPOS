@@ -169,6 +169,11 @@ export default function POS() {
   };
 
   const handlePayment = async () => {
+    if (!user?.id) {
+      toast.error('กรุณาเข้าสู่ระบบก่อนทำการชำระเงิน');
+      return;
+    }
+
     if (amountReceived < total && selectedPaymentMethod === 'cash') {
       toast.error('จำนวนเงินไม่เพียงพอ');
       return;
@@ -192,8 +197,11 @@ export default function POS() {
       };
     });
 
+    console.log('Payment Debug - User:', user);
+    console.log('Payment Debug - User ID:', user?.id);
+
     const payload: CheckoutPayload = {
-      userId: user?.id || 'd245634a-276d-4680-9322-14c0de6830f5', // Cashier user ID
+      userId: user?.id || '', // Use authenticated user's ID
       paymentMethod: selectedPaymentMethod,
       subtotal,
       discountAmount: discount,
@@ -204,6 +212,8 @@ export default function POS() {
       changeAmount: selectedPaymentMethod === 'cash' ? Math.max(change, 0) : 0,
       items: billItems,
     };
+
+    console.log('Payment Debug - Payload:', payload);
 
     try {
       const response = await checkoutMutation.mutateAsync(payload);

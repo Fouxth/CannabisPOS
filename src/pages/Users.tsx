@@ -268,13 +268,17 @@ export default function Users() {
           <form onSubmit={(e) => {
             e.preventDefault();
             const form = e.currentTarget;
-            const data: Partial<User> = {
+            const data: Partial<User> & { password?: string } = {
               fullName: (form.elements.namedItem('fullName') as HTMLInputElement).value,
               email: (form.elements.namedItem('email') as HTMLInputElement).value,
               phone: (form.elements.namedItem('phone') as HTMLInputElement).value || undefined,
               role: (form.elements.namedItem('role') as HTMLSelectElement).value as UserRole,
               isActive: (form.elements.namedItem('active') as HTMLInputElement).checked,
             };
+            // Include password only when creating new user
+            if (!editingUser) {
+              data.password = (form.elements.namedItem('password') as HTMLInputElement).value;
+            }
             handleSave(data);
           }}>
             <div className="space-y-4">
@@ -293,6 +297,22 @@ export default function Users() {
                   <Input id="phone" name="phone" defaultValue={editingUser?.phone} placeholder="08X-XXX-XXXX" />
                 </div>
               </div>
+
+              {/* Password field - only show when creating new user */}
+              {!editingUser && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">รหัสผ่าน *</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="กรอกรหัสผ่านสำหรับพนักงาน"
+                    minLength={6}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร</p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="role">ตำแหน่ง</Label>

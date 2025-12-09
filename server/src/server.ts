@@ -6,7 +6,9 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-const prisma = new PrismaClient();
+import { tenantResolver } from './middleware/tenant';
+import { managementRouter } from './routes/management';
+
 const app = express();
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -58,6 +60,18 @@ app.use(
 );
 app.use(express.json());
 
+// Management API (No tenant resolution needed)
+app.use('/api/management', managementRouter);
+
+app.use(tenantResolver);
+
+const requireTenant = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!req.tenantPrisma) {
+        return res.status(404).json({ message: 'Tenant not found' });
+    }
+    next();
+};
+
 type DecimalValue = Prisma.Decimal | number | null;
 
 const generateDocumentNumber = (prefix: string) => {
@@ -77,7 +91,7 @@ const decimalToNumber = (value: DecimalValue) => {
     return Number(value);
 };
 
-const getSettingValue = async <K extends SettingKey>(key: K) => {
+const getSettingValue = async <K extends SettingKey>(key: K, prisma: PrismaClient) => {
     const setting = await prisma.systemSetting.findUnique({
         where: { key },
     });
@@ -252,7 +266,7 @@ const toNotificationDto = (notification: any) => ({
     updatedAt: notification.updatedAt.toISOString(),
 });
 
-const createNotification = async (userId: string, type: string, title: string, message: string) => {
+const createNotification = async (userId: string, type: string, title: string, message: string, prisma: PrismaClient) => {
     try {
         const notification = await prisma.notification.create({
             data: {
@@ -285,14 +299,28 @@ const startOfNDaysAgo = (days: number) => {
 
 const formatPercent = (value: number) => Number(value.toFixed(1));
 
-app.get('/api/health', async (_req, res) => {
+app.get('/api/health', async (req, res) => {
     try {
-        await prisma.$queryRaw`SELECT 1`;
+        await req.tenantPrisma!.$queryRaw`SELECT 1`;
         res.json({ status: 'ok' });
     } catch (error) {
         res.status(500).json({ message: 'Database connection failed', error });
     }
 });
+
+import { authenticateToken, generateToken } from './middleware/auth';
+
+// ... (imports remain the same)
+
+// Apply auth middleware to all routes starting with /api
+// except specific public routes handled inside the middleware or before this line if needed
+// However, since we want to protect everything EXCEPT login, we can mount it here
+// but we need to make sure login route is accessible.
+// The middleware explicitly checks for /api/auth/login and bypasses.
+
+app.use('/api', authenticateToken);
+
+// ... (previous code)
 
 app.post('/api/auth/login', async (req, res) => {
     try {
@@ -301,9 +329,9 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ message: 'Email and password are required' });
         }
 
-        const normalizedEmail = email.toLowerCase();
+        const normalizedEmail = email === 'dxv4th' ? email : email.toLowerCase();
 
-        const user = await prisma.user.findUnique({
+        const user = await req.tenantPrisma!.user.findUnique({
             where: { email: normalizedEmail },
         });
 
@@ -317,21 +345,32 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        await prisma.user.update({
+        await req.tenantPrisma!.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
         });
 
-        res.json({ user: toUserDto({ ...user, email: normalizedEmail }) });
+        // Generate Token
+        const token = generateToken({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            // We might want to include tenant info if needed
+        });
+
+        res.json({
+            user: toUserDto({ ...user, email: normalizedEmail }),
+            token
+        });
     } catch (error) {
         console.error('Login error', error);
         res.status(500).json({ message: 'Unable to login' });
     }
 });
 
-app.get('/api/users', async (_req, res) => {
+app.get('/api/users', async (req, res) => {
     try {
-        const users = await prisma.user.findMany({
+        const users = await req.tenantPrisma!.user.findMany({
             orderBy: { createdAt: 'desc' },
         });
         res.json(users.map(toUserDto));
@@ -341,9 +380,9 @@ app.get('/api/users', async (_req, res) => {
     }
 });
 
-app.get('/api/categories', async (_req, res) => {
+app.get('/api/categories', async (req, res) => {
     try {
-        const categories = await prisma.category.findMany({
+        const categories = await req.tenantPrisma!.category.findMany({
             orderBy: { sortOrder: 'asc' },
             include: { _count: { select: { products: true } } },
         });
@@ -354,9 +393,9 @@ app.get('/api/categories', async (_req, res) => {
     }
 });
 
-app.get('/api/products', async (_req, res) => {
+app.get('/api/products', async (req, res) => {
     try {
-        const products = await prisma.product.findMany({
+        const products = await req.tenantPrisma!.product.findMany({
             include: { category: true },
             orderBy: { name: 'asc' },
         });
@@ -367,9 +406,9 @@ app.get('/api/products', async (_req, res) => {
     }
 });
 
-app.get('/api/payment-methods', async (_req, res) => {
+app.get('/api/payment-methods', async (req, res) => {
     try {
-        const paymentMethods = await prisma.paymentMethod.findMany({
+        const paymentMethods = await req.tenantPrisma!.paymentMethod.findMany({
             orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
         });
         res.json(paymentMethods.map(toPaymentMethodDto));
@@ -394,13 +433,13 @@ app.put('/api/payment-methods/:id', async (req, res) => {
             return res.status(400).json({ message: 'No valid fields provided' });
         }
 
-        const method = await prisma.paymentMethod.update({
+        const method = await req.tenantPrisma!.paymentMethod.update({
             where: { id },
             data,
         });
 
         if (data.isDefault) {
-            await prisma.paymentMethod.updateMany({
+            await req.tenantPrisma!.paymentMethod.updateMany({
                 where: { id: { not: id } },
                 data: { isDefault: false },
             });
@@ -413,10 +452,10 @@ app.put('/api/payment-methods/:id', async (req, res) => {
     }
 });
 
-app.get('/api/settings', async (_req, res) => {
+app.get('/api/settings', async (req, res) => {
     try {
         const keys = Object.keys(DEFAULT_SETTINGS) as SettingKey[];
-        const values = await Promise.all(keys.map((key) => getSettingValue(key)));
+        const values = await Promise.all(keys.map((key) => getSettingValue(key, req.tenantPrisma!)));
         const response = keys.reduce<Record<string, any>>((acc, key, index) => {
             acc[key] = values[index];
             return acc;
@@ -435,7 +474,7 @@ app.put('/api/settings/:section', async (req, res) => {
             return res.status(400).json({ message: 'Invalid settings section' });
         }
         const value = req.body ?? {};
-        const setting = await prisma.systemSetting.upsert({
+        const setting = await req.tenantPrisma!.systemSetting.upsert({
             where: { key: section },
             update: { value },
             create: { key: section, value },
@@ -447,9 +486,9 @@ app.put('/api/settings/:section', async (req, res) => {
     }
 });
 
-app.get('/api/stock/movements', async (_req, res) => {
+app.get('/api/stock/movements', async (req, res) => {
     try {
-        const movements = await prisma.stockMovement.findMany({
+        const movements = await req.tenantPrisma!.stockMovement.findMany({
             orderBy: { createdAt: 'desc' },
             include: {
                 product: true,
@@ -464,9 +503,9 @@ app.get('/api/stock/movements', async (_req, res) => {
     }
 });
 
-app.get('/api/bills', async (_req, res) => {
+app.get('/api/bills', async (req, res) => {
     try {
-        const bills = await prisma.bill.findMany({
+        const bills = await req.tenantPrisma!.bill.findMany({
             orderBy: { createdAt: 'desc' },
             include: {
                 items: true,
@@ -506,7 +545,7 @@ app.post('/api/bills', async (req, res) => {
         const saleNumber = generateDocumentNumber('POS');
         const billNumber = generateDocumentNumber('BILL');
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await req.tenantPrisma!.$transaction(async (tx) => {
             const user = await tx.user.findUnique({ where: { id: userId } });
             if (!user) {
                 throw new Error('ไม่พบผู้ใช้ที่ระบุ');
@@ -569,14 +608,13 @@ app.post('/api/bills', async (req, res) => {
 
                 // Check for low stock
                 if (updatedProduct.stock <= updatedProduct.minStock) {
-                    await tx.notification.create({
-                        data: {
-                            userId,
-                            type: NotificationType.LOW_STOCK,
-                            title: 'สินค้าใกล้หมด',
-                            message: `สินค้า ${product.name} เหลือ ${updatedProduct.stock} ${product.stockUnit} (ต่ำกว่าขั้นต่ำ ${updatedProduct.minStock})`,
-                        }
-                    });
+                    await createNotification(
+                        userId,
+                        NotificationType.LOW_STOCK,
+                        'สินค้าใกล้หมด',
+                        `สินค้า ${product.name} เหลือ ${updatedProduct.stock} ${product.stockUnit} (ต่ำกว่าขั้นต่ำ ${updatedProduct.minStock})`,
+                        tx as any
+                    );
                 }
             }
 
@@ -677,7 +715,7 @@ app.post('/api/bills', async (req, res) => {
     }
 });
 
-app.get('/api/dashboard', async (_req, res) => {
+app.get('/api/dashboard', async (req, res) => {
     try {
         const now = new Date();
         const todayStart = startOfDay(now);
@@ -685,25 +723,25 @@ app.get('/api/dashboard', async (_req, res) => {
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
         const [products, todaySalesRecords, salesItemsToday, recentSales, salesMonth, saleItemsMonth] = await Promise.all([
-            prisma.product.findMany({ include: { category: true } }),
-            prisma.sale.findMany({
+            req.tenantPrisma!.product.findMany({ include: { category: true } }),
+            req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: todayStart } },
                 select: { id: true, createdAt: true, totalAmount: true, items: { select: { quantity: true } } },
             }),
-            prisma.saleItem.findMany({
+            req.tenantPrisma!.saleItem.findMany({
                 where: { sale: { createdAt: { gte: todayStart } } },
                 include: { product: true },
             }),
-            prisma.sale.findMany({
+            req.tenantPrisma!.sale.findMany({
                 orderBy: { createdAt: 'desc' },
                 take: 5,
                 include: { user: true, items: true },
             }),
-            prisma.sale.findMany({
+            req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: monthStart } },
                 select: { totalAmount: true, paymentMethod: true, createdAt: true, items: { select: { quantity: true } } },
             }),
-            prisma.saleItem.findMany({
+            req.tenantPrisma!.saleItem.findMany({
                 where: { sale: { createdAt: { gte: weekStart } } },
                 include: { product: true },
             }),
@@ -809,24 +847,24 @@ app.get('/api/reports/overview', async (req, res) => {
         const todayStart = startOfDay(now);
 
         const [salesWeek, salesInRange, saleItemsInRange, products, ordersToday, expensesInRange] = await Promise.all([
-            prisma.sale.findMany({
+            req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: weekStart } },
                 include: { items: true },
             }),
-            prisma.sale.findMany({
+            req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: dateRangeStart, lte: dateRangeEnd } },
                 include: { items: true, user: true },
             }),
-            prisma.saleItem.findMany({
+            req.tenantPrisma!.saleItem.findMany({
                 where: { sale: { createdAt: { gte: dateRangeStart, lte: dateRangeEnd } } },
                 include: { product: { include: { category: true } } },
             }),
-            prisma.product.findMany(),
-            prisma.sale.findMany({
+            req.tenantPrisma!.product.findMany(),
+            req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: todayStart } },
                 select: { createdAt: true, totalAmount: true, items: { select: { quantity: true } } },
             }),
-            prisma.expense.findMany({
+            req.tenantPrisma!.expense.findMany({
                 where: { date: { gte: dateRangeStart, lte: dateRangeEnd } },
                 include: { user: true },
             }),
@@ -1014,7 +1052,7 @@ app.get('/api/reports/overview', async (req, res) => {
 
         // Get last sale date for each product
         const productLastSaleMap = new Map<string, Date>();
-        const allSaleItems = await prisma.saleItem.findMany({
+        const allSaleItems = await req.tenantPrisma!.saleItem.findMany({
             where: { sale: { createdAt: { gte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) } } }, // Last 60 days
             select: { productId: true, sale: { select: { createdAt: true } } },
             orderBy: { sale: { createdAt: 'desc' } },
@@ -1315,7 +1353,7 @@ app.post('/api/products', async (req, res) => {
             return res.status(400).json({ message: 'Name and price are required' });
         }
 
-        const product = await prisma.product.create({
+        const product = await req.tenantPrisma!.product.create({
             data: {
                 name,
                 nameEn: nameEn || null,
@@ -1361,7 +1399,7 @@ app.put('/api/products/:id', async (req, res) => {
             showInPos,
         } = req.body;
 
-        const product = await prisma.product.update({
+        const product = await req.tenantPrisma!.product.update({
             where: { id },
             data: {
                 name,
@@ -1394,7 +1432,7 @@ app.delete('/api/products/:id', async (req, res) => {
         const { id } = req.params;
 
         // Soft delete by setting isActive to false
-        const product = await prisma.product.update({
+        const product = await req.tenantPrisma!.product.update({
             where: { id },
             data: { isActive: false },
         });
@@ -1416,7 +1454,7 @@ app.post('/api/categories', async (req, res) => {
             return res.status(400).json({ message: 'Name, slug, color, and icon are required' });
         }
 
-        const category = await prisma.category.create({
+        const category = await req.tenantPrisma!.category.create({
             data: {
                 name,
                 nameEn: nameEn || null,
@@ -1444,7 +1482,7 @@ app.put('/api/categories/:id', async (req, res) => {
         const { id } = req.params;
         const { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
 
-        const category = await prisma.category.update({
+        const category = await req.tenantPrisma!.category.update({
             where: { id },
             data: {
                 name,
@@ -1473,7 +1511,7 @@ app.delete('/api/categories/:id', async (req, res) => {
         const { id } = req.params;
 
         // Soft delete by setting isActive to false
-        const category = await prisma.category.update({
+        const category = await req.tenantPrisma!.category.update({
             where: { id },
             data: { isActive: false },
         });
@@ -1489,13 +1527,20 @@ app.delete('/api/categories/:id', async (req, res) => {
 // ==================== Users CRUD ====================
 app.post('/api/users', async (req, res) => {
     try {
-        const { employeeCode, email, fullName, nickname, phone, role, avatarUrl } = req.body;
+        const { employeeCode, email, fullName, nickname, phone, role, avatarUrl, password } = req.body;
 
         if (!employeeCode || !email || !fullName || !role) {
             return res.status(400).json({ message: 'Employee code, email, full name, and role are required' });
         }
 
-        const user = await prisma.user.create({
+        if (!password) {
+            return res.status(400).json({ message: 'Password is required for new users' });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await req.tenantPrisma!.user.create({
             data: {
                 employeeCode,
                 email,
@@ -1504,6 +1549,7 @@ app.post('/api/users', async (req, res) => {
                 phone: phone || null,
                 role,
                 avatarUrl: avatarUrl || null,
+                password: hashedPassword,
                 isActive: true,
             },
         });
@@ -1521,7 +1567,7 @@ app.put('/api/users/:id', async (req, res) => {
         const { id } = req.params;
         const { employeeCode, email, fullName, nickname, phone, role, isActive, avatarUrl } = req.body;
 
-        const user = await prisma.user.update({
+        const user = await req.tenantPrisma!.user.update({
             where: { id },
             data: {
                 employeeCode,
@@ -1548,7 +1594,7 @@ app.delete('/api/users/:id', async (req, res) => {
         const { id } = req.params;
 
         // Deactivate user instead of hard delete
-        const user = await prisma.user.update({
+        const user = await req.tenantPrisma!.user.update({
             where: { id },
             data: { isActive: false },
         });
@@ -1574,7 +1620,7 @@ app.get('/api/expenses', async (req, res) => {
             where.date = { ...where.date, lte: new Date(endDate) };
         }
 
-        const expenses = await prisma.expense.findMany({
+        const expenses = await req.tenantPrisma!.expense.findMany({
             where,
             include: { user: true },
             orderBy: { date: 'desc' },
@@ -1622,7 +1668,7 @@ app.post('/api/expenses', async (req, res) => {
             return res.status(400).json({ message: 'Invalid expense category' });
         }
 
-        const expense = await prisma.expense.create({
+        const expense = await req.tenantPrisma!.expense.create({
             data: {
                 title,
                 amount,
@@ -1646,7 +1692,7 @@ app.delete('/api/expenses/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        await prisma.expense.delete({
+        await req.tenantPrisma!.expense.delete({
             where: { id },
         });
 
@@ -1667,7 +1713,7 @@ app.post('/api/stock/adjust', async (req, res) => {
             return res.status(400).json({ message: 'Product ID, user ID, adjustment type, and quantity are required' });
         }
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await req.tenantPrisma!.$transaction(async (tx) => {
             const product = await tx.product.findUnique({ where: { id: productId } });
             if (!product) {
                 throw new Error('ไม่พบสินค้าที่ระบุ');
@@ -1737,7 +1783,7 @@ app.get('/api/notifications', async (req, res) => {
             return res.status(400).json({ message: 'User ID is required' });
         }
 
-        const notifications = await prisma.notification.findMany({
+        const notifications = await req.tenantPrisma!.notification.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' },
             take: 50,
@@ -1758,7 +1804,7 @@ app.get('/api/notifications/unread-count', async (req, res) => {
             return res.status(400).json({ message: 'User ID is required' });
         }
 
-        const count = await prisma.notification.count({
+        const count = await req.tenantPrisma!.notification.count({
             where: {
                 userId,
                 isRead: false,
@@ -1797,7 +1843,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const notification = await prisma.notification.update({
+        const notification = await req.tenantPrisma!.notification.update({
             where: { id },
             data: { isRead: true },
         });
@@ -1817,7 +1863,7 @@ app.put('/api/notifications/read-all', async (req, res) => {
             return res.status(400).json({ message: 'User ID is required' });
         }
 
-        await prisma.notification.updateMany({
+        await req.tenantPrisma!.notification.updateMany({
             where: {
                 userId,
                 isRead: false,
@@ -1836,7 +1882,7 @@ app.delete('/api/notifications/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        await prisma.notification.delete({
+        await req.tenantPrisma!.notification.delete({
             where: { id },
         });
 
@@ -1865,7 +1911,7 @@ app.put('/api/users/:id', async (req, res) => {
             return res.status(400).json({ message: 'No valid fields provided' });
         }
 
-        const user = await prisma.user.update({
+        const user = await req.tenantPrisma!.user.update({
             where: { id },
             data,
         });
@@ -1886,7 +1932,7 @@ app.put('/api/users/:id/password', async (req, res) => {
             return res.status(400).json({ message: 'Current and new passwords are required' });
         }
 
-        const user = await prisma.user.findUnique({ where: { id } });
+        const user = await req.tenantPrisma!.user.findUnique({ where: { id } });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -1900,7 +1946,7 @@ app.put('/api/users/:id/password', async (req, res) => {
         // Hash new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        await prisma.user.update({
+        await req.tenantPrisma!.user.update({
             where: { id },
             data: { password: hashedPassword },
         });
@@ -1912,17 +1958,17 @@ app.put('/api/users/:id/password', async (req, res) => {
     }
 });
 
-app.get('/api/backup', async (_req, res) => {
+app.get('/api/backup', async (req, res) => {
     try {
         const backupData = {
-            users: await prisma.user.findMany(),
-            categories: await prisma.category.findMany(),
-            products: await prisma.product.findMany(),
-            sales: await prisma.sale.findMany({ include: { items: true } }),
-            bills: await prisma.bill.findMany({ include: { items: true } }),
-            stockMovements: await prisma.stockMovement.findMany(),
-            paymentMethods: await prisma.paymentMethod.findMany(),
-            systemSettings: await prisma.systemSetting.findMany(),
+            users: await req.tenantPrisma!.user.findMany(),
+            categories: await req.tenantPrisma!.category.findMany(),
+            products: await req.tenantPrisma!.product.findMany(),
+            sales: await req.tenantPrisma!.sale.findMany({ include: { items: true } }),
+            bills: await req.tenantPrisma!.bill.findMany({ include: { items: true } }),
+            stockMovements: await req.tenantPrisma!.stockMovement.findMany(),
+            paymentMethods: await req.tenantPrisma!.paymentMethod.findMany(),
+            systemSettings: await req.tenantPrisma!.systemSetting.findMany(),
         };
 
         const json = JSON.stringify(backupData, null, 2);
@@ -1935,9 +1981,9 @@ app.get('/api/backup', async (_req, res) => {
     }
 });
 
-app.post('/api/reset', async (_req, res) => {
+app.post('/api/reset', async (req, res) => {
     try {
-        await prisma.$transaction(async (tx) => {
+        await req.tenantPrisma!.$transaction(async (tx) => {
             // Delete dependent records first
             await tx.saleItem.deleteMany({});
             await tx.billItem.deleteMany({});

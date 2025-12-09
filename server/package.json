@@ -11,7 +11,10 @@
         "db:generate": "prisma generate",
         "db:migrate": "prisma migrate dev",
         "db:seed": "tsx prisma/seed.ts",
-        "db:studio": "prisma studio"
+        "db:studio": "prisma studio",
+        "db:management:generate": "prisma generate --schema=./prisma/management/schema.prisma",
+        "db:management:migrate": "prisma migrate dev --schema=./prisma/management/schema.prisma --name init_management",
+        "db:management:studio": "prisma studio --schema=./prisma/management/schema.prisma"
     },
     "keywords": [
         "pos",
@@ -25,12 +28,15 @@
         "bcryptjs": "^3.0.3",
         "cors": "^2.8.5",
         "dotenv": "^16.4.7",
-        "express": "^4.21.2"
+        "express": "^4.21.2",
+        "express-rate-limit": "^8.2.1",
+        "jsonwebtoken": "^9.0.3"
     },
     "devDependencies": {
         "@types/bcryptjs": "^2.4.6",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.0",
+        "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^22.16.5",
         "prisma": "^6.1.0",
         "tsx": "^4.19.2",

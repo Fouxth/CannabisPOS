@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/management-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("MANAGEMENT_DATABASE_URL")
+}
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique // for subdomain
+  dbName      String   @unique // e.g. "pos_tenant_123"
+  dbUrl       String   // Full connection string
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  domains     Domain[]
+
+  @@map("tenants")
+}
+
+model Domain {
+  id        String   @id @default(uuid())
+  domain    String   @unique // e.g. "shop1.com"
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("domains")
+}

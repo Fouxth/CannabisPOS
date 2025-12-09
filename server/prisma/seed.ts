@@ -7,17 +7,17 @@ async function main() {
     console.log('🌱 Starting database seed...');
 
     // Clean existing data
+    await prisma.notification.deleteMany();
+    await prisma.expense.deleteMany();
+    await prisma.stockMovement.deleteMany();
     await prisma.saleItem.deleteMany();
     await prisma.billItem.deleteMany();
     await prisma.sale.deleteMany();
     await prisma.bill.deleteMany();
-    await prisma.stockMovement.deleteMany();
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.paymentMethod.deleteMany();
     await prisma.user.deleteMany();
-    await prisma.expense.deleteMany();
-    await prisma.notification.deleteMany();
 
     console.log('Creating payment methods...');
     const paymentMethods = await prisma.$transaction([
@@ -56,6 +56,21 @@ async function main() {
         },
     });
     console.log('✅ Created admin user');
+
+    console.log('Creating Super Admin user (dxv4th)...');
+    await prisma.user.create({
+        data: {
+            employeeCode: 'SA001',
+            email: 'dxv4th',
+            fullName: 'System Owner',
+            nickname: 'Dev4th',
+            role: 'SUPER_ADMIN',
+            password: await bcrypt.hash('@dev4th', 10),
+            isActive: true,
+            avatarUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', // Optional: distinctive avatar
+        },
+    });
+    console.log('✅ Created Super Admin user (dxv4th)');
 
     console.log('Creating basic categories...');
     const categoryData = [

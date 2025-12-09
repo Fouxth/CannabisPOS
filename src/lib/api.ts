@@ -23,6 +23,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      'x-tenant-domain': window.location.hostname,
       ...(options.headers || {}),
     },
     ...options,
@@ -43,6 +44,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 async function requestBlob(path: string, options: RequestInit = {}): Promise<Blob> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
+      'x-tenant-domain': window.location.hostname,
       ...(options.headers || {}),
     },
     ...options,
@@ -163,6 +165,43 @@ export const api = {
   resetData: () =>
     request<{ message: string }>('/reset', {
       method: 'POST',
+    }),
+  // Management API
+  getAdminStats: () => request<{
+    totalShops: number;
+    activeShops: number;
+    totalUsers: number;
+    totalRevenue: number;
+    totalSales: number;
+  }>('/management/stats'),
+  getTenants: () => request<any[]>('/management/tenants'),
+  getTenantDetails: (id: string) => request<any>(`/management/tenants/${id}`),
+  getTenantUsers: (id: string) => request<any[]>(`/management/tenants/${id}/users`),
+  getTenantStats: (id: string, days?: number) => {
+    const params = days ? `?days=${days}` : '';
+    return request<{
+      dailyStats: Array<{ date: string; revenue: number; count: number }>;
+      totalRevenue: number;
+      totalSales: number;
+    }>(`/management/tenants/${id}/stats${params}`);
+  },
+  getAdminActivity: (limit?: number) => {
+    const params = limit ? `?limit=${limit}` : '';
+    return request<any[]>(`/management/activity${params}`);
+  },
+  createTenant: (data: { name: string; slug: string; domain: string }) =>
+    request<any>('/management/tenants', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTenant: (id: string, data: { isActive: boolean }) =>
+    request<any>(`/management/tenants/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteTenant: (id: string) =>
+    request<{ message: string }>(`/management/tenants/${id}`, {
+      method: 'DELETE',
     }),
 };
 
