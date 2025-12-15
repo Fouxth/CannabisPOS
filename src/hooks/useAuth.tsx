@@ -102,6 +102,8 @@ export const useAuth = create<AuthState>()(
       },
 
       logout: () => {
+        // Remove token from localStorage
+        import('@/lib/api').then(({ removeAuthToken }) => removeAuthToken());
         set({ user: null, isAuthenticated: false });
       },
 

@@ -1826,7 +1826,7 @@ app.post('/api/notifications', async (req, res) => {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const notification = await createNotification(userId, type, title, message);
+        const notification = await createNotification(userId, type, title, message, req.tenantPrisma!);
 
         if (!notification) {
             return res.status(500).json({ message: 'Failed to create notification' });

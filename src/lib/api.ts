@@ -19,11 +19,29 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// Get auth token from localStorage
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('auth_token');
+};
+
+// Set auth token to localStorage
+export const setAuthToken = (token: string): void => {
+  localStorage.setItem('auth_token', token);
+};
+
+// Remove auth token from localStorage
+export const removeAuthToken = (): void => {
+  localStorage.removeItem('auth_token');
+};
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       'x-tenant-domain': window.location.hostname,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -42,9 +60,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 async function requestBlob(path: string, options: RequestInit = {}): Promise<Blob> {
+  const token = getAuthToken();
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'x-tenant-domain': window.location.hostname,
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -156,11 +177,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  login: (payload: { email: string; password: string }) =>
-    request<{ user: User }>('/auth/login', {
+  login: async (payload: { email: string; password: string }) => {
+    const response = await request<{ user: User; token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
+    });
+    // Save token to localStorage
+    if (response.token) {
+      setAuthToken(response.token);
+    }
+    return response;
+  },
   backupData: () => requestBlob('/backup'),
   resetData: () =>
     request<{ message: string }>('/reset', {

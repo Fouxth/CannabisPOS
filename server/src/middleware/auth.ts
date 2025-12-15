@@ -1,0 +1,59 @@
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+interface JwtPayload {
+    id: string;
+    email: string;
+    role: string;
+}
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: JwtPayload;
+        }
+    }
+}
+
+export const generateToken = (payload: JwtPayload): string => {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+};
+
+export const verifyToken = (token: string): JwtPayload | null => {
+    try {
+        return jwt.verify(token, JWT_SECRET) as JwtPayload;
+    } catch {
+        return null;
+    }
+};
+
+export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    // When mounted on /api, req.path is relative to the mount point
+    // So /api/auth/login becomes /auth/login
+    const publicPaths = [
+        '/auth/login',
+        '/health',
+    ];
+
+    // Skip authentication for public routes
+    if (publicPaths.some(path => req.path === path || req.path.startsWith(path + '/'))) {
+        return next();
+    }
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+        return res.status(401).json({ message: 'Access token required' });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+        return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+
+    req.user = payload;
+    next();
+};
