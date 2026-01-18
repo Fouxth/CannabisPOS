@@ -177,7 +177,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  login: async (payload: { email: string; password: string }) => {
+  login: async (payload: { username: string; password: string }) => {
     const response = await request<{ user: User; token: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(payload),

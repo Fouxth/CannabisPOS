@@ -101,7 +101,7 @@ const getSettingValue = async <K extends SettingKey>(key: K, prisma: PrismaClien
 const toUserDto = (user: any) => ({
     id: user.id,
     employeeCode: user.employeeCode,
-    email: user.email,
+    username: user.username,
     fullName: user.fullName,
     nickname: user.nickname ?? undefined,
     phone: user.phone ?? undefined,
@@ -324,15 +324,15 @@ app.use('/api', authenticateToken);
 
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Email and password are required' });
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ message: 'Username and password are required' });
         }
 
-        const normalizedEmail = email === 'dxv4th' ? email : email.toLowerCase();
+        const normalizedUsername = username.toLowerCase();
 
         const user = await req.tenantPrisma!.user.findUnique({
-            where: { email: normalizedEmail },
+            where: { username: normalizedUsername },
         });
 
         if (!user) {
@@ -353,13 +353,12 @@ app.post('/api/auth/login', async (req, res) => {
         // Generate Token
         const token = generateToken({
             id: user.id,
-            email: user.email,
+            username: user.username,
             role: user.role,
-            // We might want to include tenant info if needed
         });
 
         res.json({
-            user: toUserDto({ ...user, email: normalizedEmail }),
+            user: toUserDto(user),
             token
         });
     } catch (error) {
@@ -1527,10 +1526,10 @@ app.delete('/api/categories/:id', async (req, res) => {
 // ==================== Users CRUD ====================
 app.post('/api/users', async (req, res) => {
     try {
-        const { employeeCode, email, fullName, nickname, phone, role, avatarUrl, password } = req.body;
+        const { employeeCode, username, fullName, nickname, phone, role, avatarUrl, password } = req.body;
 
-        if (!employeeCode || !email || !fullName || !role) {
-            return res.status(400).json({ message: 'Employee code, email, full name, and role are required' });
+        if (!employeeCode || !username || !fullName || !role) {
+            return res.status(400).json({ message: 'Employee code, username, full name, and role are required' });
         }
 
         if (!password) {
@@ -1543,7 +1542,7 @@ app.post('/api/users', async (req, res) => {
         const user = await req.tenantPrisma!.user.create({
             data: {
                 employeeCode,
-                email,
+                username: username.toLowerCase(),
                 fullName,
                 nickname: nickname || null,
                 phone: phone || null,
@@ -1565,13 +1564,13 @@ app.post('/api/users', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { employeeCode, email, fullName, nickname, phone, role, isActive, avatarUrl } = req.body;
+        const { employeeCode, username, fullName, nickname, phone, role, isActive, avatarUrl } = req.body;
 
         const user = await req.tenantPrisma!.user.update({
             where: { id },
             data: {
                 employeeCode,
-                email,
+                username: username ? username.toLowerCase() : undefined,
                 fullName,
                 nickname: nickname || null,
                 phone: phone || null,
@@ -1898,13 +1897,13 @@ app.delete('/api/notifications/:id', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { fullName, nickname, phone, email, avatarUrl } = req.body;
+        const { fullName, nickname, phone, username, avatarUrl } = req.body;
 
         const data: Record<string, any> = {};
         if (typeof fullName === 'string') data.fullName = fullName;
         if (typeof nickname === 'string') data.nickname = nickname;
         if (typeof phone === 'string') data.phone = phone;
-        if (typeof email === 'string') data.email = email;
+        if (typeof username === 'string') data.username = username.toLowerCase();
         if (typeof avatarUrl === 'string') data.avatarUrl = avatarUrl;
 
         if (Object.keys(data).length === 0) {

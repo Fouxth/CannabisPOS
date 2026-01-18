@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, MoreVertical, Edit, Trash2, Shield, Mail, Phone, UserCheck, UserX } from 'lucide-react';
+import { Plus, Search, MoreVertical, Edit, Trash2, Shield, User as UserIcon, Phone, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -104,7 +104,7 @@ export default function Users() {
   const filteredUsers = users.filter((user) => {
     return !searchQuery ||
       user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.employeeCode.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -162,7 +162,7 @@ export default function Users() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="ค้นหาชื่อ, อีเมล, รหัสพนักงาน..."
+              placeholder="ค้นหาชื่อ, ชื่อผู้ใช้, รหัสพนักงาน..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -222,8 +222,8 @@ export default function Users() {
 
               <div className="mt-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate">{user.email}</span>
+                  <UserIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{user.username}</span>
                 </div>
                 {user.phone && (
                   <div className="flex items-center gap-2 text-sm">
@@ -270,7 +270,7 @@ export default function Users() {
             const form = e.currentTarget;
             const data: Partial<User> & { password?: string } = {
               fullName: (form.elements.namedItem('fullName') as HTMLInputElement).value,
-              email: (form.elements.namedItem('email') as HTMLInputElement).value,
+              username: (form.elements.namedItem('username') as HTMLInputElement).value,
               phone: (form.elements.namedItem('phone') as HTMLInputElement).value || undefined,
               role: (form.elements.namedItem('role') as HTMLSelectElement).value as UserRole,
               isActive: (form.elements.namedItem('active') as HTMLInputElement).checked,
@@ -289,8 +289,8 @@ export default function Users() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">อีเมล *</Label>
-                  <Input id="email" name="email" type="email" defaultValue={editingUser?.email} placeholder="email@example.com" required />
+                  <Label htmlFor="username">ชื่อผู้ใช้ *</Label>
+                  <Input id="username" name="username" type="text" defaultValue={editingUser?.username} placeholder="username" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">เบอร์โทร</Label>

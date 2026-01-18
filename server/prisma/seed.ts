@@ -47,7 +47,7 @@ async function main() {
     const user = await prisma.user.create({
         data: {
             employeeCode: 'E001',
-            email: 'admin@cannabispos.com',
+            username: 'admin',
             fullName: 'ผู้ดูแลระบบ',
             nickname: 'Admin',
             role: 'ADMIN',
@@ -61,7 +61,7 @@ async function main() {
     await prisma.user.create({
         data: {
             employeeCode: 'SA001',
-            email: 'dxv4th',
+            username: 'dxv4th',
             fullName: 'System Owner',
             nickname: 'Dev4th',
             role: 'SUPER_ADMIN',

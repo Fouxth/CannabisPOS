@@ -35,7 +35,7 @@ export default function Login() {
         toast.success('เข้าสู่ระบบสำเร็จ');
         navigate(from, { replace: true });
       } else {
-        toast.error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+        toast.error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       }
     } catch (error) {
       toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่');
@@ -63,19 +63,19 @@ export default function Login() {
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl sm:text-2xl font-display text-center">เข้าสู่ระบบ</CardTitle>
             <CardDescription className="text-center text-sm">
-              กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ
+              กรอกชื่อผู้ใช้และรหัสผ่านเพื่อเข้าสู่ระบบ
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm">อีเมล</Label>
+                <Label htmlFor="email" className="text-sm">ชื่อผู้ใช้</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
-                    type={email === 'dxv4th' ? 'text' : 'email'}
-                    placeholder="example@email.com หรือ username"
+                    type="text"
+                    placeholder="กรอกชื่อผู้ใช้"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"

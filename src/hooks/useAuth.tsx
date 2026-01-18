@@ -7,7 +7,7 @@ export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'CASHIER'
 
 export interface User {
   id: string;
-  email: string;
+  username: string;
   fullName: string;
   nickname?: string;
   phone?: string;
@@ -77,7 +77,7 @@ export type Permission = keyof typeof PERMISSIONS;
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
@@ -90,9 +90,9 @@ export const useAuth = create<AuthState>()(
       user: null,
       isAuthenticated: false,
 
-      login: async (email: string, password: string) => {
+      login: async (username: string, password: string) => {
         try {
-          const response = await api.login({ email, password });
+          const response = await api.login({ username, password });
           set({ user: response.user, isAuthenticated: true });
           return true;
         } catch (error) {

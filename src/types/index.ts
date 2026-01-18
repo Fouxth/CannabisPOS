@@ -3,7 +3,7 @@ export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'CASHIER'
 export interface User {
   id: string;
   employeeCode: string;
-  email: string;
+  username: string;
   fullName: string;
   nickname?: string;
   phone?: string;

@@ -7,7 +7,7 @@ interface UpdateProfileDto {
     fullName?: string;
     nickname?: string;
     phone?: string;
-    email?: string;
+    username?: string;
     avatarUrl?: string;
 }
 

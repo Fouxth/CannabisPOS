@@ -14,7 +14,7 @@ datasource db {
 model User {
   id            String   @id @default(uuid())
   employeeCode  String   @unique
-  email         String   @unique
+  username      String   @unique
   fullName      String
   nickname      String?
   phone         String?

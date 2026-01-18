@@ -19,7 +19,7 @@ export default function Profile() {
         fullName: user?.fullName || '',
         nickname: user?.nickname || '',
         phone: user?.phone || '',
-        email: user?.email || '',
+        username: user?.username || '',
         avatarUrl: user?.avatarUrl || '',
     });
 
@@ -146,12 +146,12 @@ export default function Profile() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="email">อีเมล</Label>
+                                        <Label htmlFor="username">ชื่อผู้ใช้</Label>
                                         <Input
-                                            id="email"
-                                            type="email"
-                                            value={formData.email}
-                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            id="username"
+                                            type="text"
+                                            value={formData.username}
+                                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                             required
                                         />
                                     </div>
