@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import Promotions from "./pages/Promotions";
 import TenantDashboard from "./pages/admin/TenantDashboard";
 import TenantDetails from "./pages/admin/TenantDetails";
 import TenantUsers from "./pages/admin/TenantUsers";
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/promotions" element={<Promotions />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

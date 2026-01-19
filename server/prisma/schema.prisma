@@ -320,3 +320,51 @@ enum NotificationType {
   WARNING
   ERROR
 }
+
+// Promotion Model
+model Promotion {
+  id            String          @id @default(uuid())
+  name          String
+  description   String?         @db.Text
+  type          PromotionType
+  value         Decimal         @db.Decimal(10, 2)
+  minPurchase   Decimal?        @db.Decimal(10, 2)
+  maxDiscount   Decimal?        @db.Decimal(10, 2)
+  code          String?         @unique
+  usageLimit    Int?
+  usageCount    Int             @default(0)
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("promotions")
+  @@index([code])
+  @@index([isActive, startDate, endDate])
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+  BUY_X_GET_Y
+}
+
+// Audit Log Model
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  action      String
+  entity      String
+  entityId    String?
+  oldValue    Json?
+  newValue    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
