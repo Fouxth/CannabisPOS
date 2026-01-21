@@ -22,6 +22,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
+        // Only connect to Socket.io on localhost (development)
+        // Vercel serverless doesn't support WebSockets
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (!isLocalhost) {
+            // Skip socket connection on production
+            return;
+        }
+
         if (isAuthenticated && user) {
             const newSocket = io(SOCKET_URL, {
                 reconnectionAttempts: 3,
