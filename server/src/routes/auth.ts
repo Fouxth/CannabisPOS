@@ -88,6 +88,11 @@ router.post('/line-webhook', async (req, res) => {
                     const userId = event.source.userId;
                     const replyToken = event.replyToken;
 
+                    // Skip verification events (dummy replyToken)
+                    if (replyToken === '00000000000000000000000000000000') {
+                        continue;
+                    }
+
                     await fetch('https://api.line.me/v2/bot/message/reply', {
                         method: 'POST',
                         headers: {
