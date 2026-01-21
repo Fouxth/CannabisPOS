@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/management-client';
+import { PrismaClient } from '../generated/management';
 
 declare global {
     var managementPrisma: PrismaClient | undefined;
@@ -10,4 +10,4 @@ if (process.env.NODE_ENV !== 'production') {
     global.managementPrisma = managementPrisma;
 }
 
-export type { Tenant, Domain, Prisma } from '@prisma/management-client';
+export type { Tenant, Domain, Prisma } from '../generated/management';

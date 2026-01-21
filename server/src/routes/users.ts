@@ -55,14 +55,18 @@ router.post('/', async (req, res) => {
         const normalizedUsername = username.toLowerCase();
 
         // 1. Check uniqueness in Management DB
-        const existingUser = await managementPrisma.user.findFirst({
-            where: {
-                username: { equals: normalizedUsername, mode: 'insensitive' }
-            }
-        });
+        try {
+            const existingUser = await managementPrisma.user.findFirst({
+                where: {
+                    username: { equals: normalizedUsername, mode: 'insensitive' }
+                }
+            });
 
-        if (existingUser) {
-            return res.status(400).json({ message: 'Username already exists' });
+            if (existingUser) {
+                return res.status(400).json({ message: 'Username already exists' });
+            }
+        } catch (err: any) {
+            return res.status(500).json({ message: 'Internal server error during username check', error: err.message });
         }
 
         const hashedPassword = await bcrypt.hash(password || '123456', 10);

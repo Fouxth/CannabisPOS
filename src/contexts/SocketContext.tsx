@@ -23,7 +23,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     useEffect(() => {
         if (isAuthenticated && user) {
-            const newSocket = io(SOCKET_URL);
+            const newSocket = io(SOCKET_URL, {
+                reconnectionAttempts: 3,
+                timeout: 5000,
+                autoConnect: true,
+            });
 
             newSocket.on('connect', () => {
                 console.log('🔌 Socket connected');
@@ -36,8 +40,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 }
             });
 
-            newSocket.on('disconnect', () => {
-                console.log('🔌 Socket disconnected');
+            newSocket.on('connect_error', (error) => {
+                console.warn('🔌 Socket connection error:', error.message);
+                setIsConnected(false);
+            });
+
+            newSocket.on('disconnect', (reason) => {
+                console.log('🔌 Socket disconnected:', reason);
                 setIsConnected(false);
             });
 

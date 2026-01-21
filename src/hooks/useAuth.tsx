@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { api } from '@/lib/api';
+import { api, removeAuthToken } from '@/lib/api';
 
 // Role based on the system requirements
 export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'CASHIER' | 'VIEWER';
@@ -104,7 +104,7 @@ export const useAuth = create<AuthState>()(
 
       logout: () => {
         // Remove token from localStorage
-        import('@/lib/api').then(({ removeAuthToken }) => removeAuthToken());
+        removeAuthToken();
         set({ user: null, isAuthenticated: false });
       },
 
