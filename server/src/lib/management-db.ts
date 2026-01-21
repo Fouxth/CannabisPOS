@@ -1,5 +1,5 @@
-// Import from local generated directory to avoid node_modules path issues on Vercel
-import { PrismaClient } from '../generated/management-client/index.js';
+// Use relative path to access the generated management client in root node_modules
+import { PrismaClient } from '../../../node_modules/@prisma/management-client/index.js';
 
 declare global {
     var managementPrisma: PrismaClient | undefined;
@@ -11,4 +11,4 @@ if (process.env.NODE_ENV !== 'production') {
     global.managementPrisma = managementPrisma;
 }
 
-export type { Tenant, Domain, Prisma } from '../generated/management-client/index.js';
+export type { Tenant, Domain, Prisma } from '../../../node_modules/@prisma/management-client/index.js';
