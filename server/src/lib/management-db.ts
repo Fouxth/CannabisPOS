@@ -1,5 +1,5 @@
 // Use relative path since custom Prisma output dir doesn't properly register the package name
-import { PrismaClient } from '../../node_modules/@prisma/management-client/index.js';
+import { PrismaClient } from '../../../node_modules/@prisma/management-client/index.js';
 
 declare global {
     var managementPrisma: PrismaClient | undefined;
@@ -11,4 +11,4 @@ if (process.env.NODE_ENV !== 'production') {
     global.managementPrisma = managementPrisma;
 }
 
-export type { Tenant, Domain, Prisma } from '../../node_modules/@prisma/management-client/index.js';
+export type { Tenant, Domain, Prisma } from '../../../node_modules/@prisma/management-client/index.js';
