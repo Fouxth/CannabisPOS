@@ -8,10 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2, User, Lock, Camera } from 'lucide-react';
+import { Loader2, User, Lock, Camera, Shuffle } from 'lucide-react';
 
 export default function Profile() {
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const updateProfile = useUpdateProfile();
     const changePassword = useChangePassword();
 
@@ -29,15 +29,19 @@ export default function Profile() {
         confirmPassword: '',
     });
 
+    const [activeTab, setActiveTab] = useState<'general' | 'security'>('general');
+
     const handleProfileSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // ... (keep existing logic)
         if (!user?.id) return;
 
         try {
-            await updateProfile.mutateAsync({
+            const updatedUser = await updateProfile.mutateAsync({
                 userId: user.id,
                 data: formData,
             });
+            setUser(updatedUser);
             toast.success('อัปเดตข้อมูลส่วนตัวสำเร็จ');
         } catch (error) {
             toast.error('เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
@@ -45,6 +49,7 @@ export default function Profile() {
     };
 
     const handlePasswordSubmit = async (e: React.FormEvent) => {
+        // ... (keep existing logic)
         e.preventDefault();
         if (!user?.id) return;
 
@@ -86,11 +91,19 @@ export default function Profile() {
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
                 <aside className="-mx-4 lg:w-1/5">
                     <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
-                        <Button variant="ghost" className="justify-start bg-muted hover:bg-muted">
+                        <Button
+                            variant="ghost"
+                            className={`justify-start ${activeTab === 'general' ? 'bg-muted hover:bg-muted' : 'hover:bg-transparent hover:underline'}`}
+                            onClick={() => setActiveTab('general')}
+                        >
                             <User className="mr-2 h-4 w-4" />
                             ข้อมูลทั่วไป
                         </Button>
-                        <Button variant="ghost" className="justify-start hover:bg-transparent hover:underline">
+                        <Button
+                            variant="ghost"
+                            className={`justify-start ${activeTab === 'security' ? 'bg-muted hover:bg-muted' : 'hover:bg-transparent hover:underline'}`}
+                            onClick={() => setActiveTab('security')}
+                        >
                             <Lock className="mr-2 h-4 w-4" />
                             ความปลอดภัย
                         </Button>
@@ -99,108 +112,109 @@ export default function Profile() {
 
                 <div className="flex-1 lg:max-w-2xl space-y-6">
                     {/* Profile Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>ข้อมูลส่วนตัว</CardTitle>
-                            <CardDescription>
-                                แก้ไขชื่อ เบอร์โทรศัพท์ และข้อมูลติดต่อของคุณ
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleProfileSubmit} className="space-y-6">
-                                <div className="flex items-center gap-6">
-                                    <Avatar className="h-24 w-24">
-                                        <AvatarImage src={formData.avatarUrl} />
-                                        <AvatarFallback className="text-lg">{user?.fullName?.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="space-y-2">
-                                        <Label>รูปโปรไฟล์ (URL)</Label>
-                                        <div className="flex gap-2">
+                    {activeTab === 'general' && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>ข้อมูลส่วนตัว</CardTitle>
+                                <CardDescription>
+                                    แก้ไขชื่อ เบอร์โทรศัพท์ และข้อมูลติดต่อของคุณ
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleProfileSubmit} className="space-y-6">
+                                    <div className="flex items-center gap-6">
+                                        <Avatar className="h-24 w-24">
+                                            <AvatarImage src={formData.avatarUrl} />
+                                            <AvatarFallback className="text-lg">{user?.fullName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="space-y-2">
+                                            <Label>รูปโปรไฟล์ (URL)</Label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    value={formData.avatarUrl}
+                                                    onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
+                                                    placeholder="https://example.com/avatar.jpg"
+                                                    className="flex-1"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    title="สุ่มรูปการ์ตูน"
+                                                    onClick={() => {
+                                                        const seed = Math.random().toString(36).substring(7);
+                                                        setFormData({ ...formData, avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}` });
+                                                    }}
+                                                >
+                                                    <Shuffle className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">รองรับ URL ของรูปภาพ (เช่นจาก Google Photos หรือ Imgur)</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nickname">ชื่อเล่น</Label>
                                             <Input
-                                                value={formData.avatarUrl}
-                                                onChange={(e) => setFormData({ ...formData, avatarUrl: e.target.value })}
-                                                placeholder="https://example.com/avatar.jpg"
-                                                className="w-[300px]"
+                                                id="nickname"
+                                                value={formData.nickname}
+                                                onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
                                             />
                                         </div>
-                                        <p className="text-xs text-muted-foreground">รองรับ URL ของรูปภาพ (เช่นจาก Google Photos หรือ Imgur)</p>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="username">ชื่อผู้ใช้</Label>
+                                            <Input
+                                                id="username"
+                                                type="text"
+                                                value={formData.username}
+                                                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
+                                            <Input
+                                                id="phone"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="fullName">ชื่อ-นามสกุล</Label>
-                                        <Input
-                                            id="fullName"
-                                            value={formData.fullName}
-                                            onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                            required
-                                        />
+                                    <div className="flex justify-end">
+                                        <Button type="submit" disabled={updateProfile.isPending}>
+                                            {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            บันทึกการเปลี่ยนแปลง
+                                        </Button>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nickname">ชื่อเล่น</Label>
-                                        <Input
-                                            id="nickname"
-                                            value={formData.nickname}
-                                            onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="username">ชื่อผู้ใช้</Label>
-                                        <Input
-                                            id="username"
-                                            type="text"
-                                            value={formData.username}
-                                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="phone">เบอร์โทรศัพท์</Label>
-                                        <Input
-                                            id="phone"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label>รหัสพนักงาน</Label>
-                                    <Input value={user?.employeeCode} disabled className="bg-muted" />
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <Button type="submit" disabled={updateProfile.isPending}>
-                                        {updateProfile.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        บันทึกการเปลี่ยนแปลง
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Change Password */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>เปลี่ยนรหัสผ่าน</CardTitle>
-                            <CardDescription>
-                                เปลี่ยนรหัสผ่านเพื่อความปลอดภัยของบัญชี
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="currentPassword">รหัสผ่านปัจจุบัน</Label>
-                                    <Input
-                                        id="currentPassword"
-                                        type="password"
-                                        value={passwordData.currentPassword}
-                                        onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {activeTab === 'security' && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>เปลี่ยนรหัสผ่าน</CardTitle>
+                                <CardDescription>
+                                    เปลี่ยนรหัสผ่านเพื่อความปลอดภัยของบัญชี
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="currentPassword">รหัสผ่านปัจจุบัน</Label>
+                                        <Input
+                                            id="currentPassword"
+                                            type="password"
+                                            value={passwordData.currentPassword}
+                                            onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                                            required
+                                        />
+                                    </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="newPassword">รหัสผ่านใหม่</Label>
                                         <Input
@@ -209,7 +223,6 @@ export default function Profile() {
                                             value={passwordData.newPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                                             required
-                                            minLength={6}
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -220,20 +233,18 @@ export default function Profile() {
                                             value={passwordData.confirmPassword}
                                             onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                                             required
-                                            minLength={6}
                                         />
                                     </div>
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <Button type="submit" variant="outline" disabled={changePassword.isPending}>
-                                        {changePassword.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        เปลี่ยนรหัสผ่าน
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardContent>
-                    </Card>
+                                    <div className="flex justify-end">
+                                        <Button type="submit" disabled={changePassword.isPending}>
+                                            {changePassword.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            เปลี่ยนรหัสผ่าน
+                                        </Button>
+                                    </div>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

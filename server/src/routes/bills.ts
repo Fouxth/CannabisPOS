@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { MovementType, PaymentStatus, SaleStatus, BillStatus, NotificationType } from '@prisma/client';
 import { toBillDto, toSaleDto, createNotification } from '../utils/dtos';
-import { generateDocumentNumber, normalizePaymentMethod, decimalToNumber } from '../utils/helpers';
+import { generateDocumentNumber, normalizePaymentMethod, decimalToNumber, getSettingValue } from '../utils/helpers';
 import { smsService } from '../services/SmsService';
+import { requirePermission } from '../middleware/permissions';
 
 const router = Router();
 
 // Get all bills
-router.get('/', async (req, res) => {
+router.get('/', requirePermission('VIEW_BILLS'), async (req, res) => {
     try {
         const bills = await req.tenantPrisma!.bill.findMany({
             orderBy: { createdAt: 'desc' },
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get bill by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', requirePermission('VIEW_BILLS'), async (req, res) => {
     try {
         const { id } = req.params;
         const bill = await req.tenantPrisma!.bill.findUnique({
@@ -45,7 +46,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create bill (POS Sale)
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
     try {
         const {
             userId,
@@ -68,8 +69,29 @@ router.post('/', async (req, res) => {
         }
 
         const normalizedMethod = normalizePaymentMethod(paymentMethod);
-        const saleNumber = generateDocumentNumber('POS');
-        const billNumber = generateDocumentNumber('BILL');
+
+        // Fetch Settings
+        const [posSettings, storeSettings, notificationSettings] = await Promise.all([
+            getSettingValue('pos', req.tenantPrisma!),
+            getSettingValue('store', req.tenantPrisma!),
+            getSettingValue('notifications', req.tenantPrisma!),
+        ]);
+
+        const prefix = posSettings.invoicePrefix || 'POS';
+        const saleNumber = generateDocumentNumber(prefix);
+        const billNumber = generateDocumentNumber(prefix);
+
+        // Calculate todayStart based on dayClosingTime
+        const now = new Date();
+        const closingTime = storeSettings.dayClosingTime || '00:00';
+        const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+
+        const todayStart = new Date(now);
+        todayStart.setHours(closeHour, closeMinute, 0, 0);
+
+        if (now < todayStart) {
+            todayStart.setDate(todayStart.getDate() - 1);
+        }
 
         const result = await req.tenantPrisma!.$transaction(async (tx) => {
             const user = await tx.user.findUnique({ where: { id: userId } });
@@ -140,6 +162,14 @@ router.post('/', async (req, res) => {
                         `สินค้า ${product.name} เหลือ ${updatedProduct.stock} ${product.stockUnit} (ต่ำกว่าขั้นต่ำ ${updatedProduct.minStock})`,
                         tx as any
                     );
+                    // Send Flex Message for low stock
+                    smsService.sendLowStockAlert(
+                        product.name,
+                        updatedProduct.stock,
+                        updatedProduct.minStock,
+                        product.stockUnit,
+                        req.tenantPrisma!
+                    ).catch(err => console.error('Failed to send low stock alert', err));
                 }
             }
 
@@ -195,13 +225,11 @@ router.post('/', async (req, res) => {
                 include: { items: true, user: true },
             });
 
-            // Check for sales milestone (e.g. every 10,000 THB)
-            const startOfToday = new Date();
-            startOfToday.setHours(0, 0, 0, 0);
-
+            // Check for sales milestone/target
+            // We use the calculated todayStart to respect the store's closing time
             const dailySales = await tx.sale.aggregate({
                 where: {
-                    createdAt: { gte: startOfToday },
+                    createdAt: { gte: todayStart },
                     status: SaleStatus.COMPLETED
                 },
                 _sum: { totalAmount: true }
@@ -210,31 +238,42 @@ router.post('/', async (req, res) => {
             const currentTotal = Number(dailySales._sum.totalAmount || 0);
             const previousTotal = currentTotal - Number(totalAmount);
 
-            // Check if we crossed a 10,000 threshold
-            const milestoneStep = 10000;
-            const currentMilestone = Math.floor(currentTotal / milestoneStep);
-            const previousMilestone = Math.floor(previousTotal / milestoneStep);
+            // Check if we crossed the target threshold
+            if (notificationSettings.salesTarget) {
+                const milestoneStep = notificationSettings.salesTargetAmount || 10000;
+                const currentMilestone = Math.floor(currentTotal / milestoneStep);
+                const previousMilestone = Math.floor(previousTotal / milestoneStep);
 
-            if (currentMilestone > previousMilestone && currentMilestone > 0) {
-                await tx.notification.create({
-                    data: {
-                        userId,
-                        type: NotificationType.SALES_MILESTONE,
-                        title: 'ยอดขายทะลุเป้า!',
-                        message: `ยอดขายวันนี้ทะลุ ${(currentMilestone * milestoneStep).toLocaleString()} บาทแล้ว! (ยอดรวม: ${currentTotal.toLocaleString()} บาท)`,
-                    }
-                });
+                if (currentMilestone > previousMilestone && currentMilestone > 0) {
+                    await tx.notification.create({
+                        data: {
+                            userId,
+                            type: NotificationType.SALES_MILESTONE,
+                            title: 'ยอดขายทะลุเป้า!',
+                            message: `ยอดขายวันนี้ทะลุ ${(currentMilestone * milestoneStep).toLocaleString()} บาทแล้ว! (ยอดรวม: ${currentTotal.toLocaleString()} บาท)`,
+                        }
+                    });
+                }
             }
 
             return { bill: fullBill!, sale: fullSale! };
+        }, {
+            maxWait: 30000,
+            timeout: 30000,
         });
 
-        // Send SMS Alert
-        smsService.sendAlert(
-            'realtimeSales',
-            `มีรายการขายใหม่ #${result.sale.saleNumber} ยอดรวม ${result.sale.totalAmount.toLocaleString()} บาท`,
+        // Send Flex Message Alert for new sale with item details
+        const saleItems = result.sale.items.map((item: any) => ({
+            name: item.productName || 'สินค้า',
+            quantity: item.quantity,
+            price: Number(item.totalPrice)
+        }));
+        smsService.sendSalesAlert(
+            result.sale.saleNumber,
+            Number(result.sale.totalAmount),
+            saleItems,
             req.tenantPrisma!
-        ).catch(err => console.error('Failed to send sales SMS', err));
+        ).catch(err => console.error('Failed to send sales Flex Message', err));
 
         res.status(201).json({
             bill: toBillDto(result.bill),
@@ -248,7 +287,7 @@ router.post('/', async (req, res) => {
 });
 
 // Void bill
-router.put('/:id/void', async (req, res) => {
+router.put('/:id/void', requirePermission('VOID_SALE'), async (req, res) => {
     try {
         const { id } = req.params;
         const bill = await req.tenantPrisma!.bill.update({

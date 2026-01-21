@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { toUserDto } from '../utils/dtos';
 import { generateToken } from '../middleware/auth';
 import { managementPrisma } from '../lib/management-db'; // Import Management DB
+import { TenantManager } from '../services/TenantManager';
 
 const router = Router();
 
@@ -58,8 +59,30 @@ router.post('/login', async (req, res) => {
             tenantId: user.tenantId // CRITICAL: This allows routing
         });
 
+        // FETCH RICH PROFILE FROM TENANT DB
+        // The Management DB only has basic auth info. The Tenant DB has nickname, phone, avatarUrl.
+        let userProfile = user;
+        if (user.tenantId) {
+            try {
+                const tenantClient = await TenantManager.getTenantClientById(user.tenantId);
+                if (tenantClient) {
+                    const tenantUser = await tenantClient.user.findUnique({
+                        where: { id: user.id }
+                    });
+                    if (tenantUser) {
+                        // Merge or replace management user with tenant user (preferred)
+                        console.log('Fetched rich profile from Tenant DB:', tenantUser.nickname);
+                        userProfile = tenantUser as any;
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch user profile from Tenant DB:', err);
+                // Fallback to management user object
+            }
+        }
+
         res.json({
-            user: toUserDto(user),
+            user: { ...toUserDto(userProfile), storeId: user.tenantId },
             token
         });
     } catch (error) {

@@ -73,11 +73,11 @@ model Category {
 model Product {
   id          String    @id @default(uuid())
   name        String
-  nameEn      String?
   description String?   @db.Text
   price       Decimal   @db.Decimal(10, 2)
   cost        Decimal   @db.Decimal(10, 2)
-  comparePrice Decimal? @db.Decimal(10, 2)
+  promoQuantity Int?    // จำนวนที่ต้องซื้อเพื่อได้โปรโมชัน
+  promoPrice  Decimal?  @db.Decimal(10, 2) // ราคาโปรโมชันเมื่อซื้อครบจำนวน
   stock       Int       @default(0)
   minStock    Int       @default(10)
   stockUnit   String    @default("unit")

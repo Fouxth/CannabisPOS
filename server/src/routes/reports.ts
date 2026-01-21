@@ -7,38 +7,79 @@ const router = Router();
 // Reports overview with BI features
 router.get('/overview', async (req, res) => {
     try {
+        const [salesWeekQuery, salesInRangeQuery, saleItemsInRangeQuery, productsQuery, ordersTodayQuery, expensesInRangeQuery, systemSettingsQuery] = await Promise.all([
+            req.tenantPrisma!.sale.findMany({ where: { createdAt: { gte: startOfNDaysAgo(6) } }, include: { items: true } }), // Temp trigger
+            null, null, null, null, null,
+            req.tenantPrisma!.systemSetting.findUnique({ where: { key: 'store' } }),
+        ]);
+
+        const config = (systemSettingsQuery?.value as any) || {};
+        const closingTime = config.dayClosingTime || "00:00";
+        const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+
+        // Adjust dates based on closing time
+        const adjustDate = (date: Date) => {
+            const d = new Date(date);
+            d.setHours(closeHour, closeMinute, 0, 0);
+            return d;
+        };
+
         const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Calculate "Today" based on config
+        let todayStart = new Date(now);
+        todayStart.setHours(closeHour, closeMinute, 0, 0);
+        if (currentHour < closeHour || (currentHour === closeHour && currentMinute < closeMinute)) {
+            todayStart.setDate(todayStart.getDate() - 1);
+        }
 
         // Support custom date range from query parameters
         const { startDate, endDate } = req.query;
         let dateRangeStart: Date;
-        let dateRangeEnd: Date = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        let dateRangeEnd: Date;
 
+        // If specific start date provided
         if (startDate && typeof startDate === 'string') {
             dateRangeStart = new Date(startDate);
+            dateRangeStart.setHours(closeHour, closeMinute, 0, 0); // Start at closing time of that day
         } else {
+            // Default to start of this month (adjusted)
             dateRangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            dateRangeStart.setHours(closeHour, closeMinute, 0, 0);
         }
 
+        // If specific end date provided
         if (endDate && typeof endDate === 'string') {
             dateRangeEnd = new Date(endDate);
-            dateRangeEnd.setHours(23, 59, 59, 999);
+            // End date should be the closing time of the NEXT day to cover the full 24h of the "End Date"
+            // e.g. Range: Jan 1
+            // Start: Jan 1 06:00
+            // End: Jan 2 06:00 (which is the closing time of the Jan 1 business day)
+            dateRangeEnd.setDate(dateRangeEnd.getDate() + 1);
+            dateRangeEnd.setHours(closeHour, closeMinute, 0, 0);
+        } else {
+            // Default end: "End of month" -> Start of next month
+            dateRangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+            dateRangeEnd.setHours(closeHour, closeMinute, 0, 0);
         }
 
         const weekStart = startOfNDaysAgo(6);
-        const todayStart = startOfDay(now);
+        weekStart.setHours(closeHour, closeMinute, 0, 0);
 
+        // Re-fetch with correct dates
         const [salesWeek, salesInRange, saleItemsInRange, products, ordersToday, expensesInRange] = await Promise.all([
             req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: weekStart } },
                 include: { items: true },
             }),
             req.tenantPrisma!.sale.findMany({
-                where: { createdAt: { gte: dateRangeStart, lte: dateRangeEnd } },
+                where: { createdAt: { gte: dateRangeStart, lt: dateRangeEnd } }, // Use lt (less than) for exclusive end
                 include: { items: true, user: true },
             }),
             req.tenantPrisma!.saleItem.findMany({
-                where: { sale: { createdAt: { gte: dateRangeStart, lte: dateRangeEnd } } },
+                where: { sale: { createdAt: { gte: dateRangeStart, lt: dateRangeEnd } } },
                 include: { product: { include: { category: true } } },
             }),
             req.tenantPrisma!.product.findMany(),
@@ -47,7 +88,7 @@ router.get('/overview', async (req, res) => {
                 select: { createdAt: true, totalAmount: true, items: { select: { quantity: true } } },
             }),
             req.tenantPrisma!.expense.findMany({
-                where: { date: { gte: dateRangeStart, lte: dateRangeEnd } },
+                where: { date: { gte: dateRangeStart, lt: dateRangeEnd } },
                 include: { user: true },
             }),
         ]);

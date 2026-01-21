@@ -13,6 +13,7 @@ import { Bill } from '@/types';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MonthPicker } from '@/components/MonthPicker';
 
 type DateFilter = 'today' | 'custom' | 'month' | 'year' | 'all';
 
@@ -38,45 +39,72 @@ const paymentIcons: Record<string, typeof Banknote> = {
     qr: QrCode,
 };
 
+import { useAuth } from '@/hooks/useAuth';
+
 export default function Bills() {
+    const { user } = useAuth();
+
     const { data: bills = [], isLoading } = useQuery({
-        queryKey: ['bills'],
+        queryKey: ['bills', user?.storeId],
         queryFn: api.getBills,
+        enabled: !!user?.storeId,
+    });
+    const { data: systemSettings } = useQuery({
+        queryKey: ['settings', user?.storeId],
+        queryFn: api.getSettings,
+        enabled: !!user?.storeId,
     });
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
     const [showBillDialog, setShowBillDialog] = useState(false);
     const [dateFilter, setDateFilter] = useState<DateFilter>('today');
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+    const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
     // Filter bills by date
     const dateFilteredBills = useMemo(() => {
         const now = new Date();
+        const closingTime = systemSettings?.store?.dayClosingTime || '00:00';
+        const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+
+        const getBusinessDate = (date: Date) => {
+            const businessDate = new Date(date);
+            if (date.getHours() < closeHour || (date.getHours() === closeHour && date.getMinutes() < closeMinute)) {
+                businessDate.setDate(businessDate.getDate() - 1);
+            }
+            return businessDate;
+        };
+
+        const currentBusinessDate = getBusinessDate(now);
 
         return bills.filter((bill) => {
             const billDate = new Date(bill.createdAt);
+            const billBusinessDate = getBusinessDate(billDate);
 
             switch (dateFilter) {
                 case 'today':
-                    const today = now.toISOString().slice(0, 10);
-                    return bill.createdAt.startsWith(today);
+                    return billBusinessDate.toDateString() === currentBusinessDate.toDateString();
 
                 case 'custom':
-                    return bill.createdAt.startsWith(selectedDate);
+                    // selectedDate is YYYY-MM-DD string
+                    const targetDate = new Date(selectedDate);
+                    return billBusinessDate.getFullYear() === targetDate.getFullYear() &&
+                        billBusinessDate.getMonth() === targetDate.getMonth() &&
+                        billBusinessDate.getDate() === targetDate.getDate();
 
                 case 'month':
-                    return billDate.getMonth() === now.getMonth() &&
-                        billDate.getFullYear() === now.getFullYear();
+                    return billBusinessDate.getMonth() === selectedMonth.getMonth() &&
+                        billBusinessDate.getFullYear() === selectedMonth.getFullYear();
 
                 case 'year':
-                    return billDate.getFullYear() === now.getFullYear();
+                    return billBusinessDate.getFullYear() === now.getFullYear();
 
                 case 'all':
                 default:
                     return true;
             }
         });
-    }, [bills, dateFilter, selectedDate]);
+    }, [bills, dateFilter, selectedDate, selectedMonth, systemSettings]);
 
     const filteredBills = useMemo(() => {
         return dateFilteredBills.filter((bill) => {
@@ -112,7 +140,10 @@ export default function Bills() {
                 }).format(customDate);
                 break;
             case 'month':
-                label = 'เดือนนี้';
+                label = new Intl.DateTimeFormat('th-TH', {
+                    month: 'long',
+                    year: 'numeric'
+                }).format(selectedMonth);
                 break;
             case 'year':
                 label = 'ปีนี้';
@@ -146,11 +177,11 @@ export default function Bills() {
                             <h3 className="font-semibold">ช่วงเวลา</h3>
                         </div>
                         <Tabs value={dateFilter} onValueChange={(value) => setDateFilter(value as DateFilter)} className="w-full sm:w-auto">
-                            <TabsList className="grid w-full grid-cols-5">
+                            <TabsList className="grid w-full grid-cols-4">
                                 <TabsTrigger value="today" className="text-xs sm:text-sm">วันนี้</TabsTrigger>
                                 <TabsTrigger value="custom" className="text-xs sm:text-sm">เลือกวัน</TabsTrigger>
-                                <TabsTrigger value="month" className="text-xs sm:text-sm">เดือนนี้</TabsTrigger>
-                                <TabsTrigger value="year" className="text-xs sm:text-sm">ปีนี้</TabsTrigger>
+                                <TabsTrigger value="month" className="text-xs sm:text-sm">เลือกเดือน</TabsTrigger>
+                                {/* <TabsTrigger value="year" className="text-xs sm:text-sm">ปีนี้</TabsTrigger> */}
                                 <TabsTrigger value="all" className="text-xs sm:text-sm">ทั้งหมด</TabsTrigger>
                             </TabsList>
                         </Tabs>
@@ -162,6 +193,14 @@ export default function Bills() {
                                 value={selectedDate}
                                 onChange={(e) => setSelectedDate(e.target.value)}
                                 className="w-full sm:w-auto"
+                            />
+                        </div>
+                    )}
+                    {dateFilter === 'month' && (
+                        <div className="mt-4">
+                            <MonthPicker
+                                currentDate={selectedMonth}
+                                onDateChange={setSelectedMonth}
                             />
                         </div>
                     )}
@@ -226,76 +265,88 @@ export default function Bills() {
                             <div className="space-y-3">
                                 {filteredBills.map((bill, index) => {
                                     const PaymentIcon = paymentIcons[bill.paymentMethod] || Banknote;
-    if (isLoading) {
-        return (
-            <div className="space-y-4">
-                <Skeleton className="h-10 w-32" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-[400px] w-full" />
-            </div>
-        );
-    }
+                                    if (isLoading) {
+                                        return (
+                                            <div className="space-y-4">
+                                                <Skeleton className="h-10 w-32" />
+                                                <Skeleton className="h-24 w-full" />
+                                                <Skeleton className="h-[400px] w-full" />
+                                            </div>
+                                        );
+                                    }
 
-    return (
+                                    return (
                                         <div
                                             key={bill.id}
                                             className={cn(
-                                                'flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors animate-slide-in-right',
+                                                'flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors animate-slide-in-right',
                                                 bill.status === 'voided' && 'opacity-50'
                                             )}
                                             style={{ animationDelay: `${index * 30}ms` }}
                                         >
-                                            {/* Bill Icon */}
-                                            <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
-                                                <FileText className="h-6 w-6 text-primary" />
-                                            </div>
-
-                                            {/* Bill Info */}
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <p className="font-semibold font-mono">{bill.billNumber}</p>
-                                                    {bill.status === 'voided' && (
-                                                        <Badge variant="destructive" className="text-xs">ยกเลิก</Badge>
-                                                    )}
+                                            {/* Top Section: Icon + Info */}
+                                            <div className="flex items-start gap-4 flex-1">
+                                                {/* Bill Icon */}
+                                                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 shrink-0">
+                                                    <FileText className="h-6 w-6 text-primary" />
                                                 </div>
-                                                <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <Calendar className="h-3 w-3" />
-                                                        {formatDate(bill.createdAt)}
-                                                    </span>
-                                                    {bill.user && (
-                                                        <span>พนักงาน: {bill.user.fullName}</span>
-                                                    )}
+
+                                                {/* Bill Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="font-semibold font-mono">{bill.billNumber}</p>
+                                                        {bill.status === 'voided' && (
+                                                            <Badge variant="destructive" className="text-xs">ยกเลิก</Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-muted-foreground">
+                                                        <span className="flex items-center gap-1">
+                                                            <Calendar className="h-3 w-3" />
+                                                            {formatDate(bill.createdAt)}
+                                                        </span>
+                                                        {bill.user && (
+                                                            <span className="hidden sm:inline">•</span>
+                                                        )}
+                                                        {bill.user && (
+                                                            <span>พนง: {bill.user.fullName}</span>
+                                                        )}
+                                                    </div>
                                                     {bill.customerName && (
-                                                        <span>ลูกค้า: {bill.customerName}</span>
+                                                        <div className="text-sm text-muted-foreground mt-1">
+                                                            <span>ลูกค้า: {bill.customerName}</span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
 
-                                            {/* Payment Method */}
-                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted">
-                                                <PaymentIcon className="h-4 w-4" />
-                                                <span className="text-sm capitalize">{bill.paymentMethod}</span>
-                                            </div>
+                                            {/* Bottom Section: Payment + Amount + Action */}
+                                            <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto pl-[4rem] md:pl-0">
+                                                {/* Payment Method */}
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted shrink-0">
+                                                    <PaymentIcon className="h-4 w-4" />
+                                                    <span className="text-sm capitalize hidden sm:inline">{bill.paymentMethod}</span>
+                                                </div>
 
-                                            {/* Amount */}
-                                            <div className="text-right">
-                                                <p className="text-lg font-bold text-primary">
-                                                    ฿{formatCurrency(bill.totalAmount)}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {bill.items.length} รายการ
-                                                </p>
-                                            </div>
+                                                {/* Amount & Button */}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-bold text-primary">
+                                                            ฿{formatCurrency(bill.totalAmount)}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground hidden sm:block">
+                                                            {bill.items.length} รายการ
+                                                        </p>
+                                                    </div>
 
-                                            {/* View Button */}
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                onClick={() => handleViewBill(bill)}
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => handleViewBill(bill)}
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -314,6 +365,7 @@ export default function Bills() {
                     {selectedBill && (
                         <BillReceipt
                             bill={selectedBill}
+                            storeName={systemSettings?.store?.storeName}
                             onClose={() => setShowBillDialog(false)}
                             showCloseButton={false}
                         />

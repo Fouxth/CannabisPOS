@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Promotions from "./pages/Promotions";
+import Suspended from "./pages/Suspended";
 import TenantDashboard from "./pages/admin/TenantDashboard";
 import TenantDetails from "./pages/admin/TenantDetails";
 import TenantUsers from "./pages/admin/TenantUsers";
@@ -55,6 +56,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/suspended" element={<Suspended />} />
             <Route path="/" element={<RootRedirect />} />
 
             {/* Admin Routes */}

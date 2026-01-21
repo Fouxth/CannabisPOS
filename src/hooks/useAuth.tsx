@@ -69,7 +69,7 @@ export const PERMISSIONS: Record<string, UserRole[]> = {
   manage_payment_methods: ['SUPER_ADMIN', 'OWNER', 'ADMIN'],
 
   // Bills
-  view_bills: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'CASHIER'],
+  view_bills: ['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MANAGER'],
 };
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -79,6 +79,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  setUser: (user: User) => void;
   hasPermission: (permission: Permission) => boolean;
   hasAnyPermission: (permissions: Permission[]) => boolean;
   hasAllPermissions: (permissions: Permission[]) => boolean;
@@ -105,6 +106,10 @@ export const useAuth = create<AuthState>()(
         // Remove token from localStorage
         import('@/lib/api').then(({ removeAuthToken }) => removeAuthToken());
         set({ user: null, isAuthenticated: false });
+      },
+
+      setUser: (user: User) => {
+        set({ user });
       },
 
       hasPermission: (permission: Permission) => {

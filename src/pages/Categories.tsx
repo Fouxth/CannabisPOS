@@ -143,9 +143,7 @@ export default function Categories() {
                   </div>
                   <div>
                     <h3 className="font-semibold">{category.name}</h3>
-                    {category.nameEn && (
-                      <p className="text-sm text-muted-foreground">{category.nameEn}</p>
-                    )}
+
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -202,7 +200,6 @@ export default function Categories() {
             const name = (form.elements.namedItem('name') as HTMLInputElement).value;
             const data: Partial<Category> = {
               name,
-              nameEn: (form.elements.namedItem('nameEn') as HTMLInputElement).value || undefined,
               slug: name.toLowerCase().replace(/\s+/g, '-'),
               description: (form.elements.namedItem('description') as HTMLTextAreaElement)?.value || undefined,
               color: selectedColor,
@@ -218,10 +215,7 @@ export default function Categories() {
                 <Input id="name" name="name" defaultValue={editingCategory?.name} placeholder="เช่น ดอก, พรีโรล" required />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nameEn">ชื่อภาษาอังกฤษ</Label>
-                <Input id="nameEn" name="nameEn" defaultValue={editingCategory?.nameEn} placeholder="e.g. Flower, Pre-Roll" />
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="description">คำอธิบาย</Label>

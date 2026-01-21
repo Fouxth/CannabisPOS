@@ -12,10 +12,12 @@ export const DEFAULT_SETTINGS = {
         email: 'contact@happycannabis.com',
         address: '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110',
         taxId: '0123456789012',
+        dayClosingTime: '00:00', // Default closing time (midnight)
     },
     pos: {
         invoicePrefix: 'POS',
         taxRate: 7,
+        vatEnabled: true,
         maxDiscountCashier: 10,
         maxDiscountManager: 30,
         showCostPrice: true,
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS = {
     notifications: {
         lowStock: true,
         salesTarget: true,
+        salesTargetAmount: 10000,
         sound: true,
     },
 } as const;

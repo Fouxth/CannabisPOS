@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  TrendingUp, 
-  ShoppingCart, 
-  Package, 
+import {
+  TrendingUp,
+  ShoppingCart,
+  Package,
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
@@ -25,11 +25,15 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB' }).format(value);
 };
 
+import { useAuth } from '@/hooks/useAuth';
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const [showSalesDetail, setShowSalesDetail] = useState(false);
   const { data: dashboard, isLoading, isError } = useQuery({
-    queryKey: ['dashboard'],
+    queryKey: ['dashboard', user?.storeId],
     queryFn: api.getDashboard,
+    enabled: !!user?.storeId,
   });
 
   if (isLoading) {
@@ -110,8 +114,8 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, index) => (
-          <Card 
-            key={stat.title} 
+          <Card
+            key={stat.title}
             className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => stat.clickable && setShowSalesDetail(true)}
@@ -121,7 +125,7 @@ export default function Dashboard() {
                 <div className={`rounded-xl p-3 bg-${stat.color}/10`}>
                   <stat.icon className={`h-5 w-5 text-${stat.color}`} />
                 </div>
-                <Badge 
+                <Badge
                   variant={stat.change >= 0 ? 'default' : 'destructive'}
                   className="flex items-center gap-1"
                 >
@@ -135,8 +139,8 @@ export default function Dashboard() {
               </div>
               <div className="mt-4">
                 <p className="text-2xl font-bold font-display">
-                  {stat.format === 'currency' 
-                    ? formatCurrency(stat.value) 
+                  {stat.format === 'currency'
+                    ? formatCurrency(stat.value)
                     : stat.value.toLocaleString()}
                 </p>
                 <p className="text-sm text-muted-foreground">{stat.title}</p>
@@ -203,11 +207,11 @@ export default function Dashboard() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">สัดส่วนการชำระเงิน</p>
               <div className="h-4 rounded-full overflow-hidden flex">
-                <div 
+                <div
                   className="bg-success h-full transition-all"
                   style={{ width: `${cashPercent}%` }}
                 />
-                <div 
+                <div
                   className="bg-info h-full transition-all"
                   style={{ width: `${transferPercent}%` }}
                 />
@@ -246,20 +250,20 @@ export default function Dashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="hour" 
+                  <XAxis
+                    dataKey="hour"
                     tickFormatter={(hour) => `${hour}:00`}
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
@@ -288,18 +292,18 @@ export default function Dashboard() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={dashboard.topProducts} 
+                <BarChart
+                  data={dashboard.topProducts}
                   layout="vertical"
                   margin={{ left: 0, right: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis 
+                  <XAxis
                     type="number"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
-                  <YAxis 
+                  <YAxis
                     type="category"
                     dataKey="product.name"
                     stroke="hsl(var(--muted-foreground))"
@@ -307,20 +311,20 @@ export default function Dashboard() {
                     width={100}
                     tickFormatter={(name) => name.length > 12 ? `${name.slice(0, 12)}...` : name}
                   />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
                     formatter={(value: number, name: string) => [
-                      name === 'quantity' ? `${value} ชิ้น` : formatCurrency(value),
+                      name === 'quantity' ? `${value} กรัม` : formatCurrency(value),
                       name === 'quantity' ? 'จำนวน' : 'รายได้'
                     ]}
                   />
-                  <Bar 
-                    dataKey="quantity" 
-                    fill="hsl(var(--primary))" 
+                  <Bar
+                    dataKey="quantity"
+                    fill="hsl(var(--primary))"
                     radius={[0, 4, 4, 0]}
                   />
                 </BarChart>
@@ -348,15 +352,8 @@ export default function Dashboard() {
                   key={product.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="h-10 w-10 rounded-lg object-cover"
-                    />
-                    <div>
-                      <p className="font-medium text-sm">{product.name}</p>
-                    </div>
+                  <div>
+                    <p className="font-medium text-sm">{product.name}</p>
                   </div>
                   <Badge variant="destructive" className="font-mono">
                     {product.stock} {product.stockUnit}

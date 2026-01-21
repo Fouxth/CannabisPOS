@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import { Search, Filter, Plus, Minus, AlertTriangle, Package, ArrowUpDown, History, TrendingUp, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +51,7 @@ export default function Stock() {
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'subtract' | 'set'>('add');
   const [adjustmentQuantity, setAdjustmentQuantity] = useState('');
 
-  const queryClient = useQueryClient();
+  const { user } = useAuth(); // Get logged-in user
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -62,50 +63,72 @@ export default function Stock() {
     queryFn: api.getStockMovements,
   });
 
+  const queryClient = useQueryClient();
+
   const adjustStockMutation = useMutation({
     mutationFn: api.adjustStock,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
-      toast.success('ปรับสต็อกสำเร็จ');
+      toast.success('ปรับสต็อกเรียบร้อยแล้ว');
       setShowAdjustDialog(false);
-      setSelectedProduct(null);
       setAdjustmentQuantity('');
+      setSelectedProduct(null);
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'เกิดข้อผิดพลาดในการปรับสต็อก');
+    onError: () => {
+      toast.error('เกิดข้อผิดพลาดในการปรับสต็อก');
     },
   });
 
-  const lowStockProducts = useMemo(() => products.filter((p) => p.stock <= p.minStock), [products]);
-  const outOfStockProducts = useMemo(() => products.filter((p) => p.stock === 0), [products]);
-  const totalStockValue = useMemo(() => products.reduce((sum, p) => sum + p.stock * p.cost, 0), [products]);
+  const lowStockProducts = useMemo(() => {
+    return products.filter((p) => p.stock <= p.minStock && p.stock > 0);
+  }, [products]);
+
+  const outOfStockProducts = useMemo(() => {
+    return products.filter((p) => p.stock === 0);
+  }, [products]);
+
+  const totalStockValue = useMemo(() => {
+    return products.reduce((acc, p) => acc + p.stock * p.cost, 0);
+  }, [products]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      return !searchQuery ||
-        product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+    if (!searchQuery) return products;
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   }, [products, searchQuery]);
 
   const isLoading = productsLoading || movementsLoading;
 
-  const handleAdjustStock = (form: HTMLFormElement) => {
-    if (!selectedProduct) return;
+  const handleAdjustStock = () => {
+    if (!selectedProduct || !adjustmentQuantity) return;
 
-    const quantity = parseInt((form.elements.namedItem('quantity') as HTMLInputElement).value);
-    const reason = (form.elements.namedItem('reason') as HTMLTextAreaElement).value;
+    if (!user?.id) {
+      toast.error('ไม่พบข้อมูลผู้ใช้');
+      return;
+    }
 
-    // Get current user ID - you may need to get this from auth context
-    // For now, using a placeholder
-    const userId = '1'; // TODO: Get from auth context
+    const reasonEl = document.getElementById('reason') as HTMLTextAreaElement;
+    const reasonForAdjustment = reasonEl?.value;
+
+    const qty = parseInt(adjustmentQuantity);
+    let quantityChange = 0;
+
+    if (adjustmentType === 'add') {
+      quantityChange = qty;
+    } else if (adjustmentType === 'subtract') {
+      quantityChange = -qty;
+    } else if (adjustmentType === 'set') {
+      quantityChange = qty - selectedProduct.stock;
+    }
 
     adjustStockMutation.mutate({
       productId: selectedProduct.id,
-      userId,
-      adjustmentType,
-      quantity,
-      reason: reason || `ปรับสต็อก (${adjustmentType})`,
+      userId: user.id,
+      quantityChange,
+      reason: reasonForAdjustment || `ปรับสต็อก (${adjustmentType === 'add' ? 'เพิ่ม' : adjustmentType === 'subtract' ? 'ลด' : 'กำหนดใหม่'})`,
+      movementType: 'ADJUSTMENT',
     });
   };
 
@@ -216,7 +239,6 @@ export default function Stock() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">รูป</TableHead>
                     <TableHead>สินค้า</TableHead>
                     <TableHead className="text-center">สต็อก</TableHead>
                     <TableHead className="text-center">สถานะ</TableHead>
@@ -238,13 +260,6 @@ export default function Stock() {
                         style={{ animationDelay: `${index * 30}ms` }}
                       >
                         <TableCell>
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="h-12 w-12 rounded-lg object-cover"
-                          />
-                        </TableCell>
-                        <TableCell>
                           <div>
                             <p className="font-medium">{product.name}</p>
                           </div>
@@ -258,7 +273,7 @@ export default function Stock() {
                               )}>
                                 {product.stock}
                               </span>
-                              <span className="text-sm text-muted-foreground">/ {product.minStock * 2}</span>
+                              <span className="text-sm text-muted-foreground">/ ∞</span>
                             </div>
                             <Progress
                               value={stockPercentage}
@@ -319,55 +334,52 @@ export default function Stock() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {movements.map((movement, index) => {
-                  const product = products.find(p => p.id === movement.productId) || movement.product;
-                  const isPositive = movement.quantityChange > 0;
+                {movements
+                  .filter((m) => m.movementType !== 'sale')
+                  .map((movement, index) => {
+                    const product = products.find(p => p.id === movement.productId) || movement.product;
+                    const isPositive = movement.quantityChange > 0;
 
-                  return (
-                    <div
-                      key={movement.id}
-                      className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 animate-slide-up"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className={cn(
-                        'rounded-full p-2',
-                        isPositive ? 'bg-success/10' : 'bg-destructive/10'
-                      )}>
-                        {isPositive ? (
-                          <TrendingUp className="h-4 w-4 text-success" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-destructive" />
-                        )}
-                      </div>
-                      <img
-                        src={product?.imageUrl}
-                        alt={product?.name}
-                        className="h-10 w-10 rounded-lg object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{product?.name}</p>
-                        <p className="text-sm text-muted-foreground">{movement.reason}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={cn(
-                          'font-bold',
-                          isPositive ? 'text-success' : 'text-destructive'
+                    return (
+                      <div
+                        key={movement.id}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 animate-slide-up"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className={cn(
+                          'rounded-full p-2',
+                          isPositive ? 'bg-success/10' : 'bg-destructive/10'
                         )}>
-                          {isPositive ? '+' : ''}{movement.quantityChange}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {movement.previousQuantity} → {movement.newQuantity}
-                        </p>
+                          {isPositive ? (
+                            <TrendingUp className="h-4 w-4 text-success" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-destructive" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{product?.name}</p>
+                          <p className="text-sm text-muted-foreground">{movement.reason}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn(
+                            'font-bold',
+                            isPositive ? 'text-success' : 'text-destructive'
+                          )}>
+                            {isPositive ? '+' : ''}{movement.quantityChange}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {movement.previousQuantity} → {movement.newQuantity}
+                          </p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="text-muted-foreground">{movement.user?.fullName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(movement.createdAt), 'dd/MM HH:mm', { locale: th })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right text-sm">
-                        <p className="text-muted-foreground">{movement.user?.fullName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(movement.createdAt), 'dd/MM HH:mm', { locale: th })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </CardContent>
           </Card>
@@ -384,11 +396,6 @@ export default function Stock() {
           {selectedProduct && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <img
-                  src={selectedProduct.imageUrl}
-                  alt={selectedProduct.name}
-                  className="h-12 w-12 rounded-lg object-cover"
-                />
                 <div>
                   <p className="font-medium">{selectedProduct.name}</p>
                   <p className="text-sm text-muted-foreground">
@@ -399,7 +406,7 @@ export default function Stock() {
 
               <div className="space-y-2">
                 <Label>ประเภทการปรับ</Label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant={adjustmentType === 'add' ? 'default' : 'outline'}
                     onClick={() => setAdjustmentType('add')}
@@ -416,14 +423,14 @@ export default function Stock() {
                     <Minus className="h-4 w-4 mb-1" />
                     <span className="text-xs">ลด</span>
                   </Button>
-                  <Button
+                  {/* <Button
                     variant={adjustmentType === 'set' ? 'default' : 'outline'}
                     onClick={() => setAdjustmentType('set')}
                     className="flex-col h-auto py-3"
                   >
                     <ArrowUpDown className="h-4 w-4 mb-1" />
                     <span className="text-xs">กำหนด</span>
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
 
@@ -434,7 +441,8 @@ export default function Stock() {
                   name="quantity"
                   type="number"
                   placeholder="0"
-                  defaultValue={adjustmentQuantity}
+                  value={adjustmentQuantity}
+                  onChange={(e) => setAdjustmentQuantity(e.target.value)}
                   className="text-2xl h-14 text-center font-bold"
                   required
                 />
@@ -449,13 +457,13 @@ export default function Stock() {
 
           <form onSubmit={(e) => {
             e.preventDefault();
-            handleAdjustStock(e.currentTarget);
+            handleAdjustStock();
           }}>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => { setShowAdjustDialog(false); setSelectedProduct(null); setAdjustmentQuantity(''); }}>
                 ยกเลิก
               </Button>
-              <Button type="submit" className="gradient-primary text-primary-foreground">
+              <Button type="submit" className="gradient-primary text-primary-foreground" disabled={!adjustmentQuantity}>
                 ยืนยันปรับสต็อก
               </Button>
             </DialogFooter>

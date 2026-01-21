@@ -14,6 +14,7 @@ interface POSState {
   clearCart: () => void;
 
   // Cart calculations
+  calculateItemTotal: (item: CartItem) => number;
   getSubtotal: () => number;
   getDiscount: () => number;
   getTax: () => number;
@@ -38,7 +39,9 @@ interface POSState {
   viewMode: 'grid' | 'list';
   setViewMode: (mode: 'grid' | 'list') => void;
   taxRate: number;
+  vatEnabled: boolean;
   setTaxRate: (rate: number) => void;
+  setVatEnabled: (enabled: boolean) => void;
 }
 
 export const usePOSStore = create<POSState>((set, get) => ({
@@ -86,12 +89,29 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
   clearCart: () => set({ cart: [], globalDiscount: 0, amountReceived: 0 }),
 
+  calculateItemTotal: (item: CartItem) => {
+    let itemTotal = 0;
+    // Calculate promotion if available
+    if (item.product.promoQuantity && item.product.promoPrice && item.quantity >= item.product.promoQuantity) {
+      const promoSets = Math.floor(item.quantity / item.product.promoQuantity);
+      const remainingItems = item.quantity % item.product.promoQuantity;
+      itemTotal = (promoSets * item.product.promoPrice) + (remainingItems * item.product.price);
+    } else {
+      itemTotal = item.product.price * item.quantity;
+    }
+    return itemTotal;
+  },
+
   getSubtotal: () => {
-    return get().cart.reduce((sum, item) => {
-      const itemTotal = item.product.price * item.quantity;
+    const { calculateItemTotal, cart } = get();
+    return cart.reduce((sum, item) => {
+      const itemTotal = calculateItemTotal(item);
+
+      // Apply item discount
       const itemDiscount = item.discountType === 'percent'
         ? itemTotal * (item.discount / 100)
         : item.discount;
+
       return sum + itemTotal - itemDiscount;
     }, 0);
   },
@@ -103,10 +123,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
       : globalDiscount;
   },
   getTax: () => {
-    const subtotal = get().getSubtotal();
-    const discount = get().getDiscount();
-    const rate = get().taxRate;
-    return (subtotal - discount) * (rate / 100);
+    const { vatEnabled, taxRate, getSubtotal, getDiscount } = get();
+    if (!vatEnabled) return 0;
+
+    const subtotal = getSubtotal();
+    const discount = getDiscount();
+    return (subtotal - discount) * (taxRate / 100);
   },
   getTotal: () => {
     const subtotal = get().getSubtotal();
@@ -131,5 +153,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   viewMode: 'grid',
   setViewMode: (mode) => set({ viewMode: mode }),
   taxRate: 7,
+  vatEnabled: true,
   setTaxRate: (rate) => set({ taxRate: rate }),
+  setVatEnabled: (enabled: boolean) => set({ vatEnabled: enabled }),
 }));

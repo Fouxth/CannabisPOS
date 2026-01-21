@@ -41,16 +41,18 @@ export class TenantManager {
     }
 
     static async getTenantClientById(tenantId: string): Promise<PrismaClient | null> {
-        if (this.instances.has(tenantId)) {
-            return this.instances.get(tenantId)!;
-        }
-
+        // ALWAYS check for tenant existence and active status first
+        // This ensures that if a tenant is disabled, we don't return the cached client
         const tenant = await managementPrisma.tenant.findUnique({
             where: { id: tenantId },
         });
 
         if (!tenant || !tenant.isActive) {
             return null;
+        }
+
+        if (this.instances.has(tenantId)) {
+            return this.instances.get(tenantId)!;
         }
 
         const client = new PrismaClient({

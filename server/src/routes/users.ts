@@ -130,17 +130,97 @@ router.put('/:id', async (req, res) => {
             data.password = await bcrypt.hash(password, 10);
         }
 
-        const user = await req.tenantPrisma!.user.update({
-            where: { id },
-            data,
-        });
-        res.json(toUserDto(user));
+        // Update in BOTH databases to keep them in sync (especially for login data)
+        const [updatedUser] = await Promise.all([
+            req.tenantPrisma!.user.update({
+                where: { id },
+                data,
+            }),
+            managementPrisma.user.update({
+                where: { id },
+                data: {
+                    // Sync only relevant fields to central DB
+                    ...(data.username && { username: data.username }),
+                    ...(data.fullName && { fullName: data.fullName }),
+                    ...(data.password && { password: data.password }),
+                    ...(data.isActive !== undefined && { isActive: data.isActive }),
+                    // Note: Management DB might not have all fields like nickname/phone/avatarUrl if schema differs
+                    // But assuming it does based on User interface in Auth
+                },
+            }).catch(err => {
+                console.warn('Failed to update central user, but proceeding:', err);
+                // Don't fail the request if central update fails (e.g. schema mismatch)
+                // But ideally we should keep them in sync.
+                return null;
+            })
+        ]);
+
+        res.json(toUserDto(updatedUser));
     } catch (error: any) {
         console.error('Update user error', error);
         if (error.code === 'P2002') {
             return res.status(400).json({ message: 'Username or employee code already exists' });
         }
         res.status(500).json({ message: 'Unable to update user' });
+    }
+});
+
+// Change Password (Secure)
+router.put('/:id/password', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { currentPassword, newPassword } = req.body;
+        const currentUser = req.user;
+
+        // Security Check: Only allow self-update or Admin
+        if (currentUser?.id !== id && currentUser?.role !== 'SUPER_ADMIN' && currentUser?.role !== 'ADMIN') {
+            return res.status(403).json({ message: 'ไม่มีสิทธิ์ในการเปลี่ยนรหัสผ่านของผู้อื่น' });
+        }
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'กรุณาระบุรหัสผ่านปัจจุบันและรหัสผ่านใหม่' });
+        }
+
+        const user = await req.tenantPrisma!.user.findUnique({
+            where: { id },
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify current password (Check against Management DB as it is the auth source)
+        const centralUser = await managementPrisma.user.findUnique({
+            where: { id },
+        });
+
+        if (!centralUser) {
+            return res.status(404).json({ message: 'User not found in central database' });
+        }
+
+        const isValid = await bcrypt.compare(currentPassword, centralUser.password);
+        if (!isValid) {
+            return res.status(400).json({ message: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update in BOTH databases to keep them in sync
+        await Promise.all([
+            managementPrisma.user.update({
+                where: { id },
+                data: { password: hashedPassword },
+            }),
+            req.tenantPrisma!.user.update({
+                where: { id },
+                data: { password: hashedPassword },
+            })
+        ]);
+
+        res.json({ message: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว' });
+    } catch (error) {
+        console.error('Change password error', error);
+        res.status(500).json({ message: 'Unable to change password' });
     }
 });
 

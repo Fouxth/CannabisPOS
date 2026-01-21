@@ -7,13 +7,40 @@ const router = Router();
 // Dashboard overview
 router.get('/', async (req, res) => {
     try {
-        const now = new Date();
-        const todayStart = startOfDay(now);
-        const weekStart = startOfNDaysAgo(6);
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        const [products, todaySalesRecords, salesItemsToday, recentSales, salesMonth, saleItemsMonth] = await Promise.all([
+        const [products, systemSettings] = await Promise.all([
             req.tenantPrisma!.product.findMany({ include: { category: true } }),
+            req.tenantPrisma!.systemSetting.findUnique({ where: { key: 'store' } }), // Use 'store' key
+        ]);
+
+        const config = (systemSettings?.value as any) || {};
+        const closingTime = config.dayClosingTime || "00:00"; // HH:mm format
+        const [closeHour, closeMinute] = closingTime.split(':').map(Number);
+
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+
+        // Calculate today's start based on closing time
+        // If current time < closing time, we are still in the "previous day" business-wise?
+        // Usually: Start of Day = Closing Time of previous day.
+        // Example: Closing time 06:00.
+        // If now is 05:00 (Tuesday), Today Start was 06:00 (Monday).
+        // If now is 07:00 (Tuesday), Today Start is 06:00 (Tuesday).
+
+        let todayStart = new Date(now);
+        todayStart.setHours(closeHour, closeMinute, 0, 0);
+
+        if (currentHour < closeHour || (currentHour === closeHour && currentMinute < closeMinute)) {
+            todayStart.setDate(todayStart.getDate() - 1);
+        }
+
+        const weekStart = startOfNDaysAgo(6);
+        weekStart.setHours(closeHour, closeMinute, 0, 0); // Align week start too
+
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        monthStart.setHours(closeHour, closeMinute, 0, 0); // Align month start? Or just keep 1st? Maybe keep 1st but time aligned.
+
+        const [todaySalesRecords, salesItemsToday, recentSales, salesMonth, saleItemsMonth] = await Promise.all([
             req.tenantPrisma!.sale.findMany({
                 where: { createdAt: { gte: todayStart } },
                 select: { id: true, createdAt: true, totalAmount: true, items: { select: { quantity: true } } },

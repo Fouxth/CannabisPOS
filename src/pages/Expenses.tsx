@@ -40,6 +40,8 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { MonthPicker } from '@/components/MonthPicker';
+import { startOfMonth, endOfMonth } from 'date-fns';
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
@@ -65,6 +67,7 @@ const EXPENSE_CATEGORIES = [
 export default function Expenses() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [selectedCategoryValue, setSelectedCategoryValue] = useState('other'); // For add dialog
     const { user } = useAuth(); // Get logged-in user
@@ -72,8 +75,12 @@ export default function Expenses() {
     const queryClient = useQueryClient();
 
     const { data: expenses = [], isLoading } = useQuery({
-        queryKey: ['expenses'],
-        queryFn: () => api.getExpenses(),
+        queryKey: ['expenses', user?.storeId, selectedMonth],
+        queryFn: () => api.getExpenses({
+            startDate: startOfMonth(selectedMonth).toISOString(),
+            endDate: endOfMonth(selectedMonth).toISOString(),
+        }),
+        enabled: !!user?.storeId,
     });
 
     const createMutation = useMutation({
@@ -155,12 +162,15 @@ export default function Expenses() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold font-display">รายจ่าย</h1>
-                    <p className="text-muted-foreground">จัดการรายจ่ายทั้งหมด {expenses.length} รายการ</p>
+                    <p className="text-muted-foreground">จัดการรายจ่ายประจำเดือน</p>
                 </div>
-                <Button onClick={() => setShowAddDialog(true)} className="gradient-primary text-primary-foreground shadow-glow">
-                    <Plus className="h-4 w-4 mr-2" />
-                    บันทึกรายจ่าย
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <MonthPicker currentDate={selectedMonth} onDateChange={setSelectedMonth} />
+                    <Button onClick={() => setShowAddDialog(true)} className="gradient-primary text-primary-foreground shadow-glow">
+                        <Plus className="h-4 w-4 mr-2" />
+                        บันทึกรายจ่าย
+                    </Button>
+                </div>
             </div>
 
             {/* Summary Card */}

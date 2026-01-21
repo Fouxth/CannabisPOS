@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { User } from '@/hooks/useAuth';
+import { api } from '@/lib/api';
 
 const API_URL = 'http://localhost:3000/api';
 
@@ -21,18 +22,7 @@ export const useUpdateProfile = () => {
 
     return useMutation({
         mutationFn: async ({ userId, data }: { userId: string; data: UpdateProfileDto }) => {
-            const response = await fetch(`${API_URL}/users/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to update profile');
-            }
-
-            return response.json() as Promise<User>;
+            return api.updateUser(userId, data);
         },
         onSuccess: (data) => {
             // Update the user in the auth cache if needed, or just invalidate
@@ -47,18 +37,7 @@ export const useUpdateProfile = () => {
 export const useChangePassword = () => {
     return useMutation({
         mutationFn: async ({ userId, data }: { userId: string; data: ChangePasswordDto }) => {
-            const response = await fetch(`${API_URL}/users/${userId}/password`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to change password');
-            }
-
-            return response.json();
+            return api.changePassword(userId, data);
         },
     });
 };

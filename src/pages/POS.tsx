@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft } from 'lucide-react';
+import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft, Box, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,13 +52,18 @@ export default function POS() {
     globalDiscount,
     globalDiscountType,
     setGlobalDiscount,
+    taxRate,
     setTaxRate,
+    vatEnabled,
+    setVatEnabled,
+    calculateItemTotal,
   } = usePOSStore();
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
   const [showBillDialog, setShowBillDialog] = useState(false);
   const [currentBill, setCurrentBill] = useState<Bill | null>(null);
+  const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -83,10 +88,11 @@ export default function POS() {
   });
 
   useEffect(() => {
-    if (systemSettings?.pos?.taxRate) {
+    if (systemSettings?.pos) {
       setTaxRate(systemSettings.pos.taxRate);
+      setVatEnabled(systemSettings.pos.vatEnabled ?? true);
     }
-  }, [systemSettings, setTaxRate]);
+  }, [systemSettings, setTaxRate, setVatEnabled]);
 
   const checkoutMutation = useMutation({
     mutationFn: api.createBill,
@@ -250,8 +256,31 @@ export default function POS() {
 
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-6 animate-fade-in">
+      {/* Mobile Cart Bottom Bar */}
+      {cart.length > 0 && mobileTab === 'products' && (
+        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <Button
+            className="w-full h-14 shadow-xl flex items-center justify-between px-6 rounded-2xl bg-primary text-primary-foreground"
+            onClick={() => setMobileTab('cart')}
+          >
+            <div className="flex items-center gap-2">
+              <div className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
+                {cart.reduce((acc, item) => acc + item.quantity, 0)} รายการ
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-lg">฿{formatCurrency(total)}</span>
+              <ShoppingCart className="h-5 w-5 ml-2" />
+            </div>
+          </Button>
+        </div>
+      )}
+
       {/* Products Section */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={cn(
+        "flex-1 flex flex-col gap-4 min-w-0 h-full transition-all duration-300",
+        mobileTab === 'cart' ? "hidden lg:flex" : "flex"
+      )}>
         {/* Categories */}
         <ScrollArea className="mb-4 -mx-1 px-1">
           <div className="flex gap-2 pb-2">
@@ -292,7 +321,7 @@ export default function POS() {
               className="pl-10"
             />
           </div>
-          <div className="flex items-center gap-1 rounded-lg border p-1">
+          {/* <div className="flex items-center gap-1 rounded-lg border p-1">
             <Button
               variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               size="icon"
@@ -309,7 +338,7 @@ export default function POS() {
             >
               <List className="h-4 w-4" />
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Products Grid/List */}
@@ -318,7 +347,7 @@ export default function POS() {
             className={cn(
               'gap-3 pb-4',
               viewMode === 'grid'
-                ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
+                ? 'grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]'
                 : 'flex flex-col'
             )}
           >
@@ -341,46 +370,70 @@ export default function POS() {
                 >
                   {viewMode === 'grid' ? (
                     <>
-                      <div className="relative aspect-square bg-muted">
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                        />
-                        {isLowStock && !isOutOfStock && (
-                          <Badge variant="destructive" className="absolute top-2 right-2 text-[10px]">
-                            ใกล้หมด
-                          </Badge>
-                        )}
-                        {isOutOfStock && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                            <Badge variant="secondary">หมดสต็อก</Badge>
+                      <CardContent className="p-4 h-full flex flex-col items-center text-center justify-between">
+                        <div className="w-full">
+                          {/* Name */}
+                          <p className="font-semibold text-lg line-clamp-1 mb-2">{product.name}</p>
+
+                          {/* Category and Badges */}
+                          <div className="flex flex-wrap justify-center gap-2 mb-3">
+                            {category && (
+                              <div
+                                className="px-3 py-0.5 rounded-full text-[12px] border font-medium transition-colors"
+                                style={{
+                                  backgroundColor: `${category.color}15`,
+                                  color: category.color,
+                                  borderColor: `${category.color}40`
+                                }}
+                              >
+                                {category.name}
+                              </div>
+                            )}
+                            {isLowStock && !isOutOfStock && (
+                              <Badge variant="destructive" className="text-[10px] h-6 px-2 font-normal rounded-full">
+                                ใกล้หมด
+                              </Badge>
+                            )}
                           </div>
-                        )}
+                        </div>
+
+                        {/* Price */}
+                        <div className="w-full py-1">
+                          <div className="bg-[#E3F9E5] rounded-xl py-2 px-4 mb-2 inline-block w-full max-w-[180px]">
+                            <p className="text-xl font-bold text-[#1F875F]">
+                              ฿{formatCurrency(product.price)}
+                              <span className="text-sm font-normal text-[#1F875F]/70 ml-1">/{product.stockUnit}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Stock */}
+                        <div className="w-full text-center">
+                          <p className={cn(
+                            "text-sm font-medium",
+                            isLowStock ? "text-red-500" : "text-muted-foreground"
+                          )}>
+                            คงเหลือ: {product.stock} {product.stockUnit}
+                          </p>
+                          {product.promoQuantity && (
+                            <p className="text-[10px] text-orange-500 mt-1">
+                              โปร: {product.promoQuantity} {product.stockUnit} = ฿{product.promoPrice}
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-4 p-4 w-full">
+                      <div className="flex-1 min-w-0">
                         {category && (
                           <Badge
-                            className="absolute bottom-2 left-2 text-[10px]"
+                            className="text-[10px] mb-1"
                             style={{ backgroundColor: category.color }}
                           >
                             {category.name}
                           </Badge>
                         )}
-                      </div>
-                      <CardContent className="p-3">
-                        <p className="font-medium text-sm line-clamp-1">{product.name}</p>
-                        <p className="text-lg font-bold text-primary mt-1">
-                          ฿{formatCurrency(product.price)}
-                        </p>
-                      </CardContent>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-4 p-4 w-full">
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="h-16 w-16 rounded-lg object-cover"
-                      />
-                      <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{product.name}</p>
                         <p className="text-xs text-muted-foreground">
                           สต็อก: {product.stock} {product.stockUnit}
@@ -399,12 +452,26 @@ export default function POS() {
       </div>
 
       {/* Cart Section */}
-      <Card className="w-96 flex flex-col glass">
-        <CardHeader className="pb-3">
+      <Card className={cn(
+        "flex flex-col glass transition-all duration-300",
+        "w-full lg:w-80 xl:w-96", // Mobile: w-full, Tablet: w-80, Desktop: w-96
+        mobileTab === 'products' ? "hidden lg:flex" : "flex"
+      )}>
+        <CardHeader className="pb-3 border-b mb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="font-display text-lg">ตะกร้าสินค้า</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden -ml-2 h-8 w-8"
+                onClick={() => setMobileTab('products')}
+              >
+                <ArrowRightLeft className="h-4 w-4 rotate-180" />
+              </Button>
+              <CardTitle className="font-display text-lg">ตะกร้าสินค้า</CardTitle>
+            </div>
             {cart.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive">
+              <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive h-8 px-2">
                 <Trash2 className="h-4 w-4 mr-1" />
                 ล้าง
               </Button>
@@ -426,16 +493,18 @@ export default function POS() {
                   key={item.id}
                   className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 animate-slide-in-right"
                 >
-                  <img
-                    src={item.product.imageUrl}
-                    alt={item.product.name}
-                    className="h-12 w-12 rounded-lg object-cover"
-                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{item.product.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      ฿{formatCurrency(item.product.price)} x {item.quantity}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        ฿{formatCurrency(item.product.price)} x {item.quantity}
+                      </p>
+                      {item.product.promoQuantity && item.product.promoPrice && item.quantity >= item.product.promoQuantity && (
+                        <Badge variant="secondary" className="text-[10px] bg-green-500/10 text-green-600 h-5 px-1.5">
+                          โปรโมชัน
+                        </Badge>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-2">
                       <Button
                         variant="outline"
@@ -462,7 +531,7 @@ export default function POS() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-primary">
-                      ฿{formatCurrency(item.product.price * item.quantity)}
+                      ฿{formatCurrency(calculateItemTotal(item))}
                     </p>
                     <Button
                       variant="ghost"
@@ -492,10 +561,12 @@ export default function POS() {
                 <span>-฿{formatCurrency(discount)}</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">VAT 7%</span>
-              <span>฿{formatCurrency(tax)}</span>
-            </div>
+            {vatEnabled && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">VAT {taxRate}%</span>
+                <span>฿{formatCurrency(tax)}</span>
+              </div>
+            )}
             <Separator className="my-2" />
             <div className="flex justify-between text-lg font-bold">
               <span>รวมทั้งสิ้น</span>
@@ -558,7 +629,7 @@ export default function POS() {
                         />
                         <span className="text-sm">{data.name}</span>
                         <Badge variant="secondary" className="text-[10px]">
-                          {data.quantity} ชิ้น
+                          {data.quantity} กรัม
                         </Badge>
                       </div>
                       <span className="text-sm font-semibold">
@@ -722,12 +793,16 @@ export default function POS() {
       {/* Bill Dialog */}
       <Dialog open={showBillDialog} onOpenChange={setShowBillDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sr-only">
+            <DialogTitle>ใบเสร็จรับเงิน</DialogTitle>
+          </DialogHeader>
           <DialogHeader>
             <DialogTitle className="font-display">บิลการขาย</DialogTitle>
           </DialogHeader>
           {currentBill && (
             <BillReceipt
               bill={currentBill}
+              storeName={systemSettings?.store?.storeName}
               onClose={() => setShowBillDialog(false)}
               showCloseButton={false}
             />

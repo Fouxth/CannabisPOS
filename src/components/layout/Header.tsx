@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { useAuth, ROLE_NAMES } from '@/hooks/useAuth';
@@ -81,13 +82,14 @@ export function Header({ onMenuClick }: HeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 px-1 sm:px-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-[10px] sm:text-xs font-bold text-primary">
-                  {user?.fullName?.charAt(0) || 'U'}
-                </span>
-              </div>
+              <Avatar className="w-7 h-7 sm:w-8 sm:h-8">
+                <AvatarImage src={user?.avatarUrl} alt={user?.nickname} />
+                <AvatarFallback className="bg-primary/20 text-primary font-bold text-[10px] sm:text-xs">
+                  {user?.nickname?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
               <div className="hidden md:block text-left">
-                <p className="text-xs sm:text-sm font-medium leading-none">{user?.fullName}</p>
+                <p className="text-xs sm:text-sm font-medium leading-none">{user?.nickname}</p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">{user ? ROLE_NAMES[user.role] : ''}</p>
               </div>
             </Button>

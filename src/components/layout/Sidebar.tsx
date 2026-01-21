@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useAuth, ROLE_NAMES, ROLE_COLORS, Permission } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface NavItem {
   icon: React.ElementType;
@@ -115,21 +116,23 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
           collapsed ? 'flex justify-center' : ''
         )}>
           {collapsed ? (
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-xs font-bold text-primary">
+            <Avatar className="w-8 h-8 sm:w-9 sm:h-9">
+              <AvatarImage src={user.avatarUrl} alt={user.fullName} />
+              <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
                 {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
-              </span>
-            </div>
+              </AvatarFallback>
+            </Avatar>
           ) : (
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-primary">
+              <Avatar className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0">
+                <AvatarImage src={user.avatarUrl} alt={user.fullName} />
+                <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
                   {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
-                </span>
-              </div>
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-medium text-sidebar-foreground truncate">
-                  {user.fullName || user.username}
+                  {user.fullName || user.nickname}
                 </p>
                 <Badge
                   variant="secondary"

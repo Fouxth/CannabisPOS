@@ -37,11 +37,11 @@ export const toCategoryDto = (category: any) => ({
 export const toProductDto = (product: any) => ({
     id: product.id,
     name: product.name,
-    nameEn: product.nameEn ?? undefined,
     description: product.description ?? undefined,
     price: decimalToNumber(product.price),
     cost: decimalToNumber(product.cost),
-    comparePrice: product.comparePrice ? decimalToNumber(product.comparePrice) : undefined,
+    promoQuantity: product.promoQuantity ?? undefined,
+    promoPrice: product.promoPrice ? decimalToNumber(product.promoPrice) : undefined,
     stock: product.stock,
     minStock: product.minStock,
     stockUnit: product.stockUnit,

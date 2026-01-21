@@ -41,27 +41,35 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
 
+import { ProductImportDialog } from '@/components/ProductImportDialog';
+
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 };
 
+import { useAuth } from '@/hooks/useAuth';
+
 export default function Products() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({});
 
   const queryClient = useQueryClient();
 
   const { data: products = [], isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', user?.storeId],
     queryFn: api.getProducts,
+    enabled: !!user?.storeId,
   });
 
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', user?.storeId],
     queryFn: api.getCategories,
+    enabled: !!user?.storeId,
   });
 
   const createMutation = useMutation({
@@ -93,9 +101,14 @@ export default function Products() {
 
   const deleteMutation = useMutation({
     mutationFn: api.deleteProduct,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      toast.success('ลบสินค้าสำเร็จ');
+      // Use message from backend (handles soft delete cases)
+      if (data?.message) {
+        toast.success(data.message);
+      } else {
+        toast.success('ลบสินค้าสำเร็จ');
+      }
     },
     onError: (error: any) => {
       toast.error(error.message || 'เกิดข้อผิดพลาดในการลบสินค้า');
@@ -140,6 +153,8 @@ export default function Products() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <ProductImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -147,11 +162,11 @@ export default function Products() {
           <p className="text-muted-foreground">จัดการสินค้าทั้งหมด {products.length} รายการ</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
             <Upload className="h-4 w-4 mr-2" />
             นำเข้า
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast.info('ฟีเจอร์นี้กำลังพัฒนา (Coming Soon)')}>
             <Download className="h-4 w-4 mr-2" />
             ส่งออก
           </Button>
@@ -198,7 +213,6 @@ export default function Products() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">รูป</TableHead>
                 <TableHead>สินค้า</TableHead>
                 <TableHead>หมวดหมู่</TableHead>
                 <TableHead className="text-right">ราคา</TableHead>
@@ -219,13 +233,6 @@ export default function Products() {
                     className="animate-fade-in"
                     style={{ animationDelay: `${index * 30}ms` }}
                   >
-                    <TableCell>
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="h-12 w-12 rounded-lg object-cover"
-                      />
-                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{product.name}</p>
@@ -268,7 +275,7 @@ export default function Products() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast.info('ระบบดูรายละเอียดสินค้าแบบเต็ม กำลังพัฒนาครับ')}>
                             <Eye className="h-4 w-4 mr-2" />
                             ดูรายละเอียด
                           </DropdownMenuItem>
@@ -313,13 +320,17 @@ export default function Products() {
           <form onSubmit={(e) => {
             e.preventDefault();
             const form = e.currentTarget;
+            const promoQtyVal = (form.elements.namedItem('promoQuantity') as HTMLInputElement).value;
+            const promoPriceVal = (form.elements.namedItem('promoPrice') as HTMLInputElement).value;
+            const categoryVal = (form.elements.namedItem('category') as HTMLSelectElement).value;
+
             const data: Partial<Product> = {
               name: (form.elements.namedItem('name') as HTMLInputElement).value,
-              nameEn: (form.elements.namedItem('nameEn') as HTMLInputElement).value || undefined,
-              categoryId: (form.elements.namedItem('category') as HTMLSelectElement).value || undefined,
+              categoryId: categoryVal || null, // Send null if empty
               price: parseFloat((form.elements.namedItem('price') as HTMLInputElement).value),
               cost: parseFloat((form.elements.namedItem('cost') as HTMLInputElement).value) || 0,
-              comparePrice: parseFloat((form.elements.namedItem('comparePrice') as HTMLInputElement).value) || undefined,
+              promoQuantity: promoQtyVal ? parseInt(promoQtyVal) : null, // Send null if empty
+              promoPrice: promoPriceVal ? parseFloat(promoPriceVal) : null, // Send null if empty
               stock: parseInt((form.elements.namedItem('stock') as HTMLInputElement).value) || 0,
               minStock: parseInt((form.elements.namedItem('minStock') as HTMLInputElement).value) || 10,
               stockUnit: (form.elements.namedItem('stockUnit') as HTMLInputElement).value || 'unit',
@@ -330,15 +341,9 @@ export default function Products() {
             handleSaveProduct(data);
           }}>
             <div className="grid gap-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="name">ชื่อสินค้า *</Label>
-                  <Input id="name" name="name" defaultValue={editingProduct?.name} placeholder="กรอกชื่อสินค้า" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nameEn">ชื่อภาษาอังกฤษ</Label>
-                  <Input id="nameEn" name="nameEn" defaultValue={editingProduct?.nameEn} placeholder="Product name" />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">ชื่อสินค้า *</Label>
+                <Input id="name" name="name" defaultValue={editingProduct?.name} placeholder="กรอกชื่อสินค้า" required />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -359,7 +364,7 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="price">ราคาขาย *</Label>
                   <Input id="price" name="price" type="number" step="0.01" defaultValue={editingProduct?.price} placeholder="0.00" required />
@@ -368,9 +373,22 @@ export default function Products() {
                   <Label htmlFor="cost">ราคาทุน</Label>
                   <Input id="cost" name="cost" type="number" step="0.01" defaultValue={editingProduct?.cost} placeholder="0.00" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="comparePrice">ราคาเปรียบเทียบ</Label>
-                  <Input id="comparePrice" name="comparePrice" type="number" step="0.01" defaultValue={editingProduct?.comparePrice} placeholder="0.00" />
+              </div>
+
+              {/* Promotion Section */}
+              <div className="p-4 rounded-lg border border-dashed border-primary/50 bg-primary/5">
+                <p className="text-sm font-medium text-primary mb-3">🎁 โปรโมชัน (ซื้อกี่กรัมราคาเท่าไหร่)</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="promoQuantity">จำนวนโปรโมชัน</Label>
+                    <Input id="promoQuantity" name="promoQuantity" type="number" defaultValue={(editingProduct as any)?.promoQuantity || ''} placeholder="เช่น 3" />
+                    <p className="text-xs text-muted-foreground">ซื้อกี่กรัมถึงได้โปร</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="promoPrice">ราคาโปรโมชัน</Label>
+                    <Input id="promoPrice" name="promoPrice" type="number" step="0.01" defaultValue={(editingProduct as any)?.promoPrice || ''} placeholder="เช่น 100" />
+                    <p className="text-xs text-muted-foreground">ราคารวมเมื่อซื้อครบจำนวน</p>
+                  </div>
                 </div>
               </div>
 
@@ -385,7 +403,7 @@ export default function Products() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="stockUnit">หน่วยนับ</Label>
-                  <Input id="stockUnit" name="stockUnit" defaultValue={editingProduct?.stockUnit || 'ชิ้น'} placeholder="ชิ้น" />
+                  <Input id="stockUnit" name="stockUnit" defaultValue={editingProduct?.stockUnit || 'กรัม'} placeholder="กรัม" />
                 </div>
               </div>
 

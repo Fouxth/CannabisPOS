@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 interface BillReceiptProps {
     bill: Bill;
+    storeName?: string;
     onClose?: () => void;
     showCloseButton?: boolean;
 }
@@ -26,7 +27,7 @@ const formatDate = (dateString: string) => {
     }).format(date);
 };
 
-export function BillReceipt({ bill, onClose, showCloseButton = false }: BillReceiptProps) {
+export function BillReceipt({ bill, storeName = 'CannabisPOS', onClose, showCloseButton = false }: BillReceiptProps) {
     const handlePrint = () => {
         window.print();
     };
@@ -52,7 +53,7 @@ export function BillReceipt({ bill, onClose, showCloseButton = false }: BillRece
                 <CardContent className="p-6 space-y-4">
                     {/* Header */}
                     <div className="text-center space-y-2">
-                        <h1 className="text-2xl font-bold font-display">CannabisPOS</h1>
+                        <h1 className="text-2xl font-bold font-display">{storeName}</h1>
                         <p className="text-sm text-muted-foreground">ระบบจัดการร้าน</p>
                         <Separator />
                     </div>

@@ -70,6 +70,16 @@ router.post('/adjust', async (req, res) => {
             }),
         ]);
 
+        // Send Flex Message for stock adjustment
+        const { smsService } = await import('../services/SmsService');
+        smsService.sendStockAdjustmentAlert(
+            product.name,
+            previousQuantity,
+            newQuantity,
+            reason || 'ไม่ระบุ',
+            req.tenantPrisma!
+        ).catch(err => console.error('Failed to send stock adjustment alert', err));
+
         res.status(201).json({
             product: toProductDto(updatedProduct),
             movement: toStockMovementDto(movement),

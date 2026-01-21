@@ -241,7 +241,7 @@ export default function Settings() {
           </TabsTrigger>
           <TabsTrigger value="sms" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">SMS</span>
+            <span className="hidden sm:inline">LINE BOT</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
@@ -303,6 +303,36 @@ export default function Settings() {
                 />
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                {/* <div className="space-y-2">
+                  <Label htmlFor="taxId">เลขประจำตัวผู้เสียภาษี</Label>
+                  <Input
+                    id="taxId"
+                    value={storeForm.taxId ?? ''}
+                    onChange={(e) => setStoreForm({ ...storeForm, taxId: e.target.value })}
+                    placeholder="เช่น 0123456789012"
+                  />
+                </div> */}
+
+                <div className="space-y-2">
+                  <Label htmlFor="dayClosingTime">เวลาปิดรอบยอดขายรายวัน (Reset Time)</Label>
+                  <div className="flex flex-col gap-1.5">
+                    <Input
+                      id="dayClosingTime"
+                      type="time"
+                      value={storeForm.dayClosingTime || "00:00"}
+                      onChange={(e) =>
+                        setStoreForm({ ...storeForm, dayClosingTime: e.target.value })
+                      }
+                      className="w-full sm:w-full"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      ยอดขายจะถูกรีเซ็ตตามเวลานี้ (เหมาะสำหรับร้านที่ปิดดึกหลังเที่ยงคืน)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
 
             </CardContent>
           </Card>
@@ -347,6 +377,14 @@ export default function Settings() {
                     }
                   />
                 </div>
+              </div>
+              <div className="flex items-center space-x-2 pt-2">
+                <Switch
+                  id="vatEnabled"
+                  checked={posForm.vatEnabled}
+                  onCheckedChange={(checked) => setPosForm({ ...posForm, vatEnabled: checked })}
+                />
+                <Label htmlFor="vatEnabled">คิดภาษีมูลค่าเพิ่ม (VAT 7%)</Label>
               </div>
 
               <Separator />
@@ -513,47 +551,69 @@ export default function Settings() {
 
                   <Separator />
 
-                  <div className="space-y-4">
-                    <h4 className="font-medium">ประเภทการแจ้งเตือน</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
                     {Object.entries(smsForm.alerts).map(([key, value]) => {
-                      const titles: Record<string, { title: string; description: string }> = {
-                        realtimeSales: {
-                          title: 'แจ้งเตือนการขาย Real-time',
-                          description: 'ส่งข้อความทุกครั้งที่มีการขาย',
+                      const alertConfig: Record<string, { title: string; description: string; icon: string; color: string }> = {
+                        lowStock: {
+                          title: 'แจ้งเตือนสินค้าใกล้หมด',
+                          description: 'ส่งข้อความเมื่อสินค้าต่ำกว่าจำนวนขั้นต่ำ',
+                          icon: '📦',
+                          color: 'from-orange-500/20 to-orange-500/5 border-orange-500/30',
                         },
                         dailySummary: {
                           title: 'สรุปยอดขายประจำวัน',
-                          description: 'ส่งสรุปยอดขายทุกวัน เวลา 21:00',
+                          description: `ส่งสรุปยอดขายทุกวัน เวลา ${storeForm.dayClosingTime || '00:00'}`,
+                          icon: '📊',
+                          color: 'from-blue-500/20 to-blue-500/5 border-blue-500/30',
+                        },
+                        realtimeSales: {
+                          title: 'แจ้งเตือนการขาย Real-time',
+                          description: 'ส่งข้อความทุกครั้งที่มีการขาย',
+                          icon: '💰',
+                          color: 'from-green-500/20 to-green-500/5 border-green-500/30',
                         },
                         monthlySummary: {
                           title: 'สรุปยอดขายประจำเดือน',
                           description: 'ส่งสรุปยอดขายทุกสิ้นเดือน',
-                        },
-                        lowStock: {
-                          title: 'แจ้งเตือนสินค้าใกล้หมด',
-                          description: 'ส่งข้อความเมื่อสินค้าต่ำกว่าจำนวนขั้นต่ำ',
+                          icon: '📅',
+                          color: 'from-purple-500/20 to-purple-500/5 border-purple-500/30',
                         },
                         stockAdjustments: {
                           title: 'แจ้งเตือนการปรับสต็อก',
                           description: 'ส่งข้อความเมื่อมีการปรับปรุงสต็อก',
+                          icon: '🔄',
+                          color: 'from-cyan-500/20 to-cyan-500/5 border-cyan-500/30',
                         },
                       };
-                      const info = titles[key] ?? { title: key, description: '' };
+                      const config = alertConfig[key] ?? { title: key, description: '', icon: '🔔', color: 'from-primary/20 to-primary/5 border-primary/30' };
                       return (
-                        <div key={key} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                          <div>
-                            <p className="font-medium">{info.title}</p>
-                            <p className="text-sm text-muted-foreground">{info.description}</p>
+                        <div
+                          key={key}
+                          className={`rounded-xl border p-4 bg-gradient-to-br ${config.color} transition-all hover:shadow-lg`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 text-2xl">{config.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-semibold text-sm truncate">{config.title}</h4>
+                                <Switch
+                                  checked={value}
+                                  onCheckedChange={(checked) =>
+                                    setSmsForm({
+                                      ...smsForm,
+                                      alerts: { ...smsForm.alerts, [key]: checked },
+                                    })
+                                  }
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground">{config.description}</p>
+                              {value && (
+                                <Badge variant="secondary" className="mt-2 text-[10px] bg-green-500/20 text-green-600 border-green-500/30">
+                                  เปิดใช้งาน
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <Switch
-                            checked={value}
-                            onCheckedChange={(checked) =>
-                              setSmsForm({
-                                ...smsForm,
-                                alerts: { ...smsForm.alerts, [key]: checked },
-                              })
-                            }
-                          />
                         </div>
                       );
                     })}
@@ -600,17 +660,40 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-lg border">
-                <div>
-                  <p className="font-medium">แจ้งเตือนยอดขายถึงเป้า</p>
-                  <p className="text-sm text-muted-foreground">แสดงการแจ้งเตือนเมื่อยอดขายถึงเป้าหมาย</p>
+              <div className="space-y-3 p-4 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">แจ้งเตือนยอดขายถึงเป้า</p>
+                    <p className="text-sm text-muted-foreground">แสดงการแจ้งเตือนเมื่อยอดขายถึงเป้าหมาย</p>
+                  </div>
+                  <Switch
+                    checked={false}
+                    onCheckedChange={() =>
+                      toast.info('ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา (Coming Soon)')
+                    }
+                  />
                 </div>
-                <Switch
-                  checked={notificationForm.salesTarget}
-                  onCheckedChange={(checked) =>
-                    setNotificationForm({ ...notificationForm, salesTarget: checked })
-                  }
-                />
+                {notificationForm.salesTarget && (
+                  <div className="pt-3 border-t">
+                    <Label htmlFor="salesTargetAmount">เป้าหมายยอดขายรายวัน (บาท)</Label>
+                    <Input
+                      id="salesTargetAmount"
+                      type="number"
+                      className="mt-2"
+                      placeholder="เช่น 10000"
+                      value={(notificationForm as any).salesTargetAmount || ''}
+                      onChange={(e) =>
+                        setNotificationForm({
+                          ...notificationForm,
+                          salesTargetAmount: Number(e.target.value) || 0,
+                        } as any)
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ระบบจะแจ้งเตือนเมื่อยอดขายวันนี้ถึงเป้าหมายที่ตั้งไว้
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-4 rounded-lg border">
@@ -619,9 +702,9 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">เปิดเสียงเมื่อมีการแจ้งเตือน</p>
                 </div>
                 <Switch
-                  checked={notificationForm.sound}
-                  onCheckedChange={(checked) =>
-                    setNotificationForm({ ...notificationForm, sound: checked })
+                  checked={false}
+                  onCheckedChange={() =>
+                    toast.info('ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา (Coming Soon)')
                   }
                 />
               </div>

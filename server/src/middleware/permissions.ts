@@ -19,6 +19,10 @@ export const PERMISSIONS = {
     VOID_SALE: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
     VIEW_SALES: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER],
 
+    // Bill Management
+    MANAGE_BILLS: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
+    VIEW_BILLS: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER,],
+
     // Stock Management
     MANAGE_STOCK: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER],
     VIEW_STOCK: [UserRole.SUPER_ADMIN, UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER, UserRole.CASHIER],

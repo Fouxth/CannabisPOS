@@ -81,31 +81,55 @@ export function NotificationDropdown() {
                 <ScrollArea className="h-[300px]">
                     {recentNotifications.length > 0 ? (
                         <div className="py-1">
-                            {recentNotifications.map((notification) => (
-                                <DropdownMenuItem
-                                    key={notification.id}
-                                    className={cn(
-                                        "flex flex-col items-start gap-1 p-3 cursor-pointer focus:bg-accent",
-                                        !notification.isRead && "bg-accent/50"
-                                    )}
-                                    onClick={() => handleNotificationClick(notification.id, notification.isRead)}
-                                >
-                                    <div className="flex w-full gap-3">
-                                        <div className={cn("mt-1 h-2 w-2 rounded-full shrink-0", !notification.isRead ? "bg-primary" : "bg-transparent")} />
-                                        <div className="flex-1 space-y-1">
-                                            <p className={cn("text-sm font-medium leading-none", !notification.isRead && "font-semibold")}>
-                                                {notification.title}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground line-clamp-2">
-                                                {notification.message}
-                                            </p>
-                                            <p className="text-[10px] text-muted-foreground">
-                                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: th })}
-                                            </p>
+                            {recentNotifications.map((notification) => {
+                                const getTypeStyles = (type: string, isRead: boolean) => {
+                                    if (isRead) return 'bg-muted/30 border-l-2 border-l-muted';
+                                    switch (type) {
+                                        case 'low_stock': return 'bg-gradient-to-r from-orange-500/10 to-transparent border-l-2 border-l-orange-500';
+                                        case 'sales_milestone': return 'bg-gradient-to-r from-emerald-500/10 to-transparent border-l-2 border-l-emerald-500';
+                                        case 'error': return 'bg-gradient-to-r from-red-500/10 to-transparent border-l-2 border-l-red-500';
+                                        case 'warning': return 'bg-gradient-to-r from-amber-500/10 to-transparent border-l-2 border-l-amber-500';
+                                        default: return 'bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-l-primary';
+                                    }
+                                };
+                                const getIcon = (type: string) => {
+                                    switch (type) {
+                                        case 'low_stock': return '📦';
+                                        case 'sales_milestone': return '🎉';
+                                        case 'error': return '❌';
+                                        case 'warning': return '⚠️';
+                                        default: return '🔔';
+                                    }
+                                };
+                                return (
+                                    <DropdownMenuItem
+                                        key={notification.id}
+                                        className={cn(
+                                            "flex flex-col items-start gap-1 p-3 cursor-pointer focus:bg-accent rounded-lg mx-1 mb-1",
+                                            getTypeStyles(notification.type, notification.isRead)
+                                        )}
+                                        onClick={() => handleNotificationClick(notification.id, notification.isRead)}
+                                    >
+                                        <div className="flex w-full gap-3">
+                                            <div className="text-xl shrink-0">{getIcon(notification.type)}</div>
+                                            <div className="flex-1 space-y-1">
+                                                <p className={cn("text-sm leading-none", !notification.isRead ? "font-semibold" : "font-medium")}>
+                                                    {notification.title}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                                    {notification.message}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: th })}
+                                                </p>
+                                            </div>
+                                            {!notification.isRead && (
+                                                <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
+                                            )}
                                         </div>
-                                    </div>
-                                </DropdownMenuItem>
-                            ))}
+                                    </DropdownMenuItem>
+                                );
+                            })}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">

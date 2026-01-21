@@ -35,10 +35,56 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Bulk create products
+router.post('/bulk', async (req, res) => {
+    try {
+        const products = req.body;
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({ message: 'Invalid product list' });
+        }
+
+        // Validate required fields for each product
+        const validProducts = products.filter(p => p.name && p.price !== undefined && p.cost !== undefined).map(p => ({
+            name: p.name,
+            description: p.description,
+            price: Number(p.price),
+            cost: Number(p.cost),
+            promoQuantity: p.promoQuantity ? Number(p.promoQuantity) : null,
+            promoPrice: p.promoPrice ? Number(p.promoPrice) : null,
+            stock: p.stock ? Number(p.stock) : 0,
+            minStock: p.minStock ? Number(p.minStock) : 10,
+            stockUnit: p.stockUnit || 'unit',
+            categoryId: p.categoryId || null,
+            isActive: true,
+            showInPos: true,
+        }));
+
+        if (validProducts.length === 0) {
+            return res.status(400).json({ message: 'No valid products found to import' });
+        }
+
+        // Use transaction to ensure data integrity
+        const createdCount = await req.tenantPrisma!.$transaction(async (tx) => {
+            let count = 0;
+            for (const product of validProducts) {
+                await tx.product.create({ data: product });
+                count++;
+            }
+            return count;
+        });
+
+        res.status(201).json({ message: `Successfully imported ${createdCount} products`, count: createdCount });
+    } catch (error) {
+        console.error('Bulk create product error', error);
+        res.status(500).json({ message: 'Unable to import products' });
+    }
+});
+
 // Create product
 router.post('/', async (req, res) => {
     try {
-        const { name, nameEn, description, price, cost, comparePrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
+        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
 
         if (!name || price === undefined || cost === undefined) {
             return res.status(400).json({ message: 'Name, price, and cost are required' });
@@ -47,11 +93,11 @@ router.post('/', async (req, res) => {
         const product = await req.tenantPrisma!.product.create({
             data: {
                 name,
-                nameEn,
                 description,
                 price,
                 cost,
-                comparePrice,
+                promoQuantity: promoQuantity ? Number(promoQuantity) : null,
+                promoPrice: promoPrice ? Number(promoPrice) : null,
                 stock: stock ?? 0,
                 minStock: minStock ?? 10,
                 stockUnit: stockUnit ?? 'unit',
@@ -73,19 +119,22 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, nameEn, description, price, cost, comparePrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
+        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
 
         const data: Record<string, any> = {};
         if (name !== undefined) data.name = name;
-        if (nameEn !== undefined) data.nameEn = nameEn;
         if (description !== undefined) data.description = description;
         if (price !== undefined) data.price = price;
         if (cost !== undefined) data.cost = cost;
-        if (comparePrice !== undefined) data.comparePrice = comparePrice;
+
+        // Handle optional fields (allow setting to null)
+        if (promoQuantity !== undefined) data.promoQuantity = promoQuantity;
+        if (promoPrice !== undefined) data.promoPrice = promoPrice;
+        if (categoryId !== undefined) data.categoryId = categoryId || null; // Handle empty string as null
+
         if (stock !== undefined) data.stock = stock;
         if (minStock !== undefined) data.minStock = minStock;
         if (stockUnit !== undefined) data.stockUnit = stockUnit;
-        if (categoryId !== undefined) data.categoryId = categoryId;
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
         if (typeof isActive === 'boolean') data.isActive = isActive;
         if (typeof showInPos === 'boolean') data.showInPos = showInPos;
@@ -97,8 +146,8 @@ router.put('/:id', async (req, res) => {
         });
         res.json(toProductDto(product));
     } catch (error) {
-        console.error('Update product error', error);
-        res.status(500).json({ message: 'Unable to update product' });
+        console.error('Update product error:', error);
+        res.status(500).json({ message: 'Unable to update product', error: String(error) });
     }
 });
 
@@ -106,10 +155,18 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        await req.tenantPrisma!.product.delete({
-            where: { id },
-        });
-        res.json({ message: 'Product deleted successfully' });
+
+        // Force delete everything associated with this product
+        await req.tenantPrisma!.$transaction([
+            req.tenantPrisma!.stockMovement.deleteMany({ where: { productId: id } }),
+            req.tenantPrisma!.saleItem.deleteMany({ where: { productId: id } }),
+            req.tenantPrisma!.billItem.deleteMany({ where: { productId: id } }),
+            req.tenantPrisma!.product.delete({ where: { id } })
+        ]);
+
+        res.json({ message: 'ลบสินค้าและข้อมูลที่เกี่ยวข้องเรียบร้อยแล้ว' });
+
+
     } catch (error) {
         console.error('Delete product error', error);
         res.status(500).json({ message: 'Unable to delete product' });

@@ -34,11 +34,11 @@ export interface Category {
 export interface Product {
   id: string;
   name: string;
-  nameEn?: string;
   description?: string;
   price: number;
   cost: number;
-  comparePrice?: number;
+  promoQuantity?: number; // จำนวนที่ต้องซื้อเพื่อได้โปรโมชัน
+  promoPrice?: number; // ราคาโปรโมชันเมื่อซื้อครบจำนวน
   stock: number;
   minStock: number;
   stockUnit: string;
@@ -295,13 +295,15 @@ export interface StoreSettings {
   storeNameEn?: string;
   phone?: string;
   email?: string;
-  address?: string;
-  taxId?: string;
+  address: string;
+  taxId: string;
+  dayClosingTime?: string; // e.g. "06:00"
 }
 
 export interface PosSettings {
   invoicePrefix: string;
   taxRate: number;
+  vatEnabled: boolean;
   maxDiscountCashier: number;
   maxDiscountManager: number;
   showCostPrice: boolean;
@@ -327,6 +329,7 @@ export interface SmsSettings {
 export interface AppNotificationSettings {
   lowStock: boolean;
   salesTarget: boolean;
+  salesTargetAmount: number;
   sound: boolean;
 }
 

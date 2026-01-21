@@ -48,8 +48,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+    const text = await response.text();
+
+    // Check if tenant is inactive or not found (404 or 403)
+    if (
+      (response.status === 404 && text.includes('Tenant not found or inactive')) ||
+      (response.status === 403 && text.includes('Shop is inactive'))
+    ) {
+      removeAuthToken();
+      window.location.href = '/suspended';
+      throw new Error('ร้านค้านี้ถูกปิดใช้งานชั่วคราว');
+    }
+
+    throw new Error(text || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
   }
 
   if (response.status === 204) {
@@ -80,6 +91,11 @@ async function requestBlob(path: string, options: RequestInit = {}): Promise<Blo
 }
 
 export const api = {
+  importProducts: (products: Partial<Product>[]) =>
+    request<{ message: string; count: number }>('/products/bulk', {
+      method: 'POST',
+      body: JSON.stringify(products),
+    }),
   getProducts: () => request<Product[]>('/products'),
   getCategories: () => request<Category[]>('/categories'),
   getPaymentMethods: () => request<PaymentMethod[]>('/payment-methods'),
@@ -152,6 +168,11 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  changePassword: (id: string, data: any) =>
+    request<{ message: string }>(`/users/${id}/password`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
   deleteUser: (id: string) =>
     request<{ message: string }>(`/users/${id}`, {
       method: 'DELETE',
@@ -172,10 +193,10 @@ export const api = {
   adjustStock: (data: {
     productId: string;
     userId: string;
-    adjustmentType: 'add' | 'subtract' | 'set';
-    quantity: number;
+    quantityChange: number;
     reason?: string;
     notes?: string;
+    movementType?: 'ADJUSTMENT' | 'RESTOCK' | 'SOLD' | 'RETURNED' | 'WASTE' | 'AUDIT';
   }) =>
     request<{ product: Product; movement: StockMovement }>('/stock/adjust', {
       method: 'POST',
