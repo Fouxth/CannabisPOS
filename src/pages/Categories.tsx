@@ -204,7 +204,7 @@ export default function Categories() {
               name,
               nameEn: (form.elements.namedItem('nameEn') as HTMLInputElement).value || undefined,
               slug: name.toLowerCase().replace(/\s+/g, '-'),
-              description: (form.elements.namedItem(' description') as HTMLTextAreaElement).value || undefined,
+              description: (form.elements.namedItem('description') as HTMLTextAreaElement)?.value || undefined,
               color: selectedColor,
               icon: 'Package',
               isActive: (form.elements.namedItem('active') as HTMLInputElement).checked,

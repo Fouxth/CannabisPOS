@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { MovementType, PaymentStatus, SaleStatus, BillStatus, NotificationType } from '@prisma/client';
 import { toBillDto, toSaleDto, createNotification } from '../utils/dtos';
 import { generateDocumentNumber, normalizePaymentMethod, decimalToNumber } from '../utils/helpers';
+import { smsService } from '../services/SmsService';
 
 const router = Router();
 
@@ -227,6 +228,13 @@ router.post('/', async (req, res) => {
 
             return { bill: fullBill!, sale: fullSale! };
         });
+
+        // Send SMS Alert
+        smsService.sendAlert(
+            'realtimeSales',
+            `มีรายการขายใหม่ #${result.sale.saleNumber} ยอดรวม ${result.sale.totalAmount.toLocaleString()} บาท`,
+            req.tenantPrisma!
+        ).catch(err => console.error('Failed to send sales SMS', err));
 
         res.status(201).json({
             bill: toBillDto(result.bill),

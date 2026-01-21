@@ -42,24 +42,14 @@ app.use(express.json());
 // Management API (No tenant resolution needed)
 app.use('/api/management', managementRouter);
 
-// Apply tenant resolver
-app.use(tenantResolver);
-
-// Health check
-app.get('/api/health', async (req, res) => {
-    try {
-        await req.tenantPrisma!.$queryRaw`SELECT 1`;
-        res.json({ status: 'ok' });
-    } catch (error) {
-        res.status(500).json({ message: 'Database connection failed', error });
-    }
-});
-
-// Auth routes (before auth middleware)
+// Auth routes (Public, no auth/tenant needed)
 app.use('/api/auth', authRouter);
 
 // Apply auth middleware to all routes below
 app.use('/api', authenticateToken);
+
+// Apply tenant resolver (Uses req.user from auth middleware)
+app.use(tenantResolver);
 
 // Mount route modules
 app.use('/api/users', usersRouter);

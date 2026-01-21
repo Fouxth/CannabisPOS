@@ -1,8 +1,19 @@
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { PrismaClient } from '@prisma/client';
 import { managementPrisma } from './src/lib/management-db';
 
 async function main() {
+    console.log('--- Debugging Info ---');
+    const url = process.env.MANAGEMENT_DATABASE_URL || '';
+    console.log('MANAGEMENT_DATABASE_URL:', url.replace(/:([^:@]+)@/, ':****@'));
+    const password = url.match(/:([^:@]+)@/)?.[1];
+    console.log('Password Length:', password?.length);
+    console.log('Password First Char:', password?.[0]);
+    console.log('Password Last Char:', password?.[password.length - 1]);
+
     console.log('--- Checking Management DB ---');
     const domains = await managementPrisma.domain.findMany({ include: { tenant: true } });
     console.log(`Found ${domains.length} domains:`);
@@ -18,7 +29,7 @@ async function main() {
     const defaultPrisma = new PrismaClient();
     try {
         const user = await defaultPrisma.user.findFirst({
-            where: { OR: [{ email: 'dxv4th' }, { employeeCode: 'SA001' }] }
+            where: { OR: [{ username: 'dxv4th' }, { employeeCode: 'SA001' }] }
         });
         if (user) {
             console.log('✅ Found dxv4th in DEFAULT DB (DATABASE_URL)');
@@ -41,7 +52,7 @@ async function main() {
 
         try {
             const user = await tenantPrisma.user.findFirst({
-                where: { OR: [{ email: 'dxv4th' }, { employeeCode: 'SA001' }] }
+                where: { OR: [{ username: 'dxv4th' }, { employeeCode: 'SA001' }] }
             });
             if (user) {
                 console.log(`✅ Found dxv4th in ${d.tenant.dbName}`);
@@ -53,6 +64,27 @@ async function main() {
         } finally {
             await tenantPrisma.$disconnect();
         }
+    }
+
+    console.log('\n--- Checking Tenant 24HR420 Manually ---');
+    const manualUrl = 'postgresql://Dxv4th:%21Fourthzxx@103.142.150.196:5432/cannabispos_tenant_24HR420';
+    const manualPrisma = new PrismaClient({ datasources: { db: { url: manualUrl } } });
+    try {
+        const user = await manualPrisma.user.findFirst({
+            where: { OR: [{ username: 'dxv4th' }, { employeeCode: 'SA001' }] }
+        });
+        if (user) {
+            console.log('✅ Found dxv4th in cannabispos_tenant_24HR420');
+        } else {
+            console.log('❌ dxv4th NOT found in cannabispos_tenant_24HR420 (might be empty DB)');
+            // Try to query something generic or just successfull connection
+            await manualPrisma.$executeRawUnsafe('SELECT 1');
+            console.log('✅ Connection Sucessful (SELECT 1)');
+        }
+    } catch (e) {
+        console.error('❌ Manual Connection Failed:', e);
+    } finally {
+        await manualPrisma.$disconnect();
     }
 }
 

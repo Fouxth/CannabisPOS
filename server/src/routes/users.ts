@@ -34,35 +34,79 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+import { managementPrisma } from '../lib/management-db';
+
+// ... existing imports ...
+
 // Create user
 router.post('/', async (req, res) => {
     try {
         const { employeeCode, username, fullName, nickname, phone, avatarUrl, password, role } = req.body;
+        const currentUser = req.user;
 
         if (!employeeCode || !username || !fullName || !role) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
+        if (!currentUser?.tenantId) {
+            return res.status(403).json({ message: 'Only tenant users can create employees' });
+        }
+
+        const normalizedUsername = username.toLowerCase();
+
+        // 1. Check uniqueness in Management DB
+        const existingUser = await managementPrisma.user.findFirst({
+            where: {
+                username: { equals: normalizedUsername, mode: 'insensitive' }
+            }
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username already exists' });
+        }
+
         const hashedPassword = await bcrypt.hash(password || '123456', 10);
 
-        const user = await req.tenantPrisma!.user.create({
+        // 2. Create in Management DB
+        const centralUser = await managementPrisma.user.create({
             data: {
-                employeeCode,
-                username: username.toLowerCase(),
-                fullName,
-                nickname,
-                phone,
-                avatarUrl,
+                username: normalizedUsername,
                 password: hashedPassword,
-                role,
-            },
+                role: role, // Storing as string
+                tenantId: currentUser.tenantId,
+                isActive: true
+            }
         });
-        res.status(201).json(toUserDto(user));
+
+        // 3. Create in Tenant DB (using same ID)
+        try {
+            const user = await req.tenantPrisma!.user.create({
+                data: {
+                    id: centralUser.id, // Use same ID
+                    employeeCode,
+                    username: normalizedUsername,
+                    fullName,
+                    nickname,
+                    phone,
+                    avatarUrl,
+                    password: hashedPassword,
+                    role,
+                },
+            });
+            res.status(201).json(toUserDto(user));
+        } catch (tenantError: any) {
+            // Rollback Management DB creation if Tenant DB fails
+            console.error('Tenant DB creation failed, rolling back central user...', tenantError);
+            await managementPrisma.user.delete({ where: { id: centralUser.id } });
+
+            if (tenantError.code === 'P2002') {
+                return res.status(400).json({ message: 'Employee code already exists' });
+            }
+            throw tenantError;
+        }
+
     } catch (error: any) {
         console.error('Create user error', error);
-        if (error.code === 'P2002') {
-            return res.status(400).json({ message: 'Username or employee code already exists' });
-        }
         res.status(500).json({ message: 'Unable to create user' });
     }
 });

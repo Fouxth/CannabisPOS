@@ -13,6 +13,8 @@ import {
   Receipt,
   TrendingDown
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useAuth, ROLE_NAMES, ROLE_COLORS, Permission } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +48,12 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   const location = useLocation();
   const { user, hasPermission } = useAuth();
 
+  const { data: settings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.getSettings,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
   // Filter nav items based on permissions
   const visibleNavItems = navItems.filter(item => hasPermission(item.requiredPermission));
 
@@ -64,7 +72,9 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
           </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <h1 className="text-base sm:text-lg font-bold font-display text-sidebar-foreground whitespace-nowrap">CannabisPOS</h1>
+              <h1 className="text-base sm:text-lg font-bold font-display text-sidebar-foreground whitespace-nowrap">
+                {settings?.store?.storeName || 'CannabisPOS'}
+              </h1>
               <p className="text-[10px] text-sidebar-foreground/60 whitespace-nowrap">ระบบจัดการร้าน</p>
             </div>
           )}
@@ -107,19 +117,19 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
           {collapsed ? (
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-xs font-bold text-primary">
-                {user.fullName.charAt(0)}
+                {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-bold text-primary">
-                  {user.fullName.charAt(0)}
+                  {(user.fullName || user.username || 'U').charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-medium text-sidebar-foreground truncate">
-                  {user.fullName}
+                  {user.fullName || user.username}
                 </p>
                 <Badge
                   variant="secondary"

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { toUserDto } from '../utils/dtos';
 import { generateToken } from '../middleware/auth';
+import { managementPrisma } from '../lib/management-db'; // Import Management DB
 
 const router = Router();
 
@@ -13,10 +14,15 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
-        const normalizedUsername = username.toLowerCase();
-
-        const user = await req.tenantPrisma!.user.findUnique({
-            where: { username: normalizedUsername },
+        // AUTH CHECK: Check against CENTRAL Management DB (case-insensitive)
+        const user = await managementPrisma.user.findFirst({
+            where: {
+                username: {
+                    equals: username,
+                    mode: 'insensitive' // Case-insensitive search
+                }
+            },
+            include: { tenant: true }
         });
 
         if (!user) {
@@ -29,16 +35,27 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        await req.tenantPrisma!.user.update({
+        // CHECK: Is User Active?
+        if (!user.isActive) {
+            return res.status(403).json({ message: 'User account is inactive' });
+        }
+
+        // CHECK: Is Tenant Active? (If user belongs to a tenant)
+        if (user.tenant && !user.tenant.isActive) {
+            return res.status(403).json({ message: 'Shop is inactive. Please contact support.' });
+        }
+
+        await managementPrisma.user.update({
             where: { id: user.id },
             data: { lastLoginAt: new Date() },
         });
 
-        // Generate Token
+        // Generate Token with Tenant ID
         const token = generateToken({
             id: user.id,
             username: user.username,
-            role: user.role,
+            role: user.role, // Use role from Management DB (or map it)
+            tenantId: user.tenantId // CRITICAL: This allows routing
         });
 
         res.json({

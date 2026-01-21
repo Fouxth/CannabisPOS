@@ -321,6 +321,7 @@ export default function Users() {
                     <SelectValue placeholder="เลือกตำแหน่ง" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="OWNER">เจ้าของร้าน</SelectItem>
                     <SelectItem value="ADMIN">ผู้ดูแลระบบ</SelectItem>
                     <SelectItem value="MANAGER">ผู้จัดการ</SelectItem>
                     <SelectItem value="CASHIER">พนักงานขาย</SelectItem>

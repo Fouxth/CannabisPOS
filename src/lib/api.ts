@@ -110,6 +110,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+  sendTestSms: () =>
+    request<{ message: string }>('/settings/test-sms', {
+      method: 'POST',
+    }),
   createProduct: (data: Partial<Product>) =>
     request<Product>('/products', {
       method: 'POST',
@@ -216,7 +220,7 @@ export const api = {
     const params = limit ? `?limit=${limit}` : '';
     return request<any[]>(`/management/activity${params}`);
   },
-  createTenant: (data: { name: string; slug: string; domain: string }) =>
+  createTenant: (data: { name: string; slug: string; domain: string; ownerName?: string }) =>
     request<any>('/management/tenants', {
       method: 'POST',
       body: JSON.stringify(data),

@@ -14,10 +14,12 @@ model Tenant {
   slug        String   @unique // for subdomain
   dbName      String   @unique // e.g. "pos_tenant_123"
   dbUrl       String   // Full connection string
+  ownerName   String?  // Shop owner's name
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   domains     Domain[]
+  users       User[]
 
   @@map("tenants")
 }
@@ -31,4 +33,19 @@ model Domain {
   updatedAt DateTime @updatedAt
 
   @@map("domains")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  password    String
+  role        String   @default("ADMIN") // SUPER_ADMIN, ADMIN, USER
+  tenantId    String?  // Null for System Super Admin
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("users")
 }

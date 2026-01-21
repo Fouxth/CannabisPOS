@@ -7,6 +7,7 @@ interface JwtPayload {
     id: string;
     username: string;
     role: string;
+    tenantId?: string | null;
 }
 
 declare global {
@@ -29,7 +30,9 @@ export const verifyToken = (token: string): JwtPayload | null => {
     }
 };
 
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+import { managementPrisma } from '../lib/management-db';
+
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
     // When mounted on /api, req.path is relative to the mount point
     // So /api/auth/login becomes /auth/login
     const publicPaths = [
@@ -52,6 +55,23 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     const payload = verifyToken(token);
     if (!payload) {
         return res.status(403).json({ message: 'Invalid or expired token' });
+    }
+
+    // CRITICAL: Check if tenant is still active in DB
+    if (payload.tenantId) {
+        try {
+            const tenant = await managementPrisma.tenant.findUnique({
+                where: { id: payload.tenantId },
+                select: { isActive: true }
+            });
+
+            if (!tenant || !tenant.isActive) {
+                return res.status(403).json({ message: 'Shop is inactive. Please contact support.' });
+            }
+        } catch (error) {
+            console.error('Auth middleware error:', error);
+            return res.status(500).json({ message: 'Internal server error during auth check' });
+        }
     }
 
     req.user = payload;

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { DEFAULT_SETTINGS, SettingKey, getSettingValue } from '../utils/helpers';
 import { toPaymentMethodDto } from '../utils/dtos';
+import { smsService } from '../services/SmsService';
 
 const router = Router();
 
@@ -85,6 +86,68 @@ router.put('/payment-methods/:id', async (req, res) => {
     } catch (error) {
         console.error('Update payment method error', error);
         res.status(500).json({ message: 'Unable to update payment method' });
+    }
+});
+
+// Test SMS
+router.post('/test-sms', async (req, res) => {
+    try {
+        const settings = await getSettingValue('sms', req.tenantPrisma!);
+        if (!settings.enabled) {
+            return res.status(400).json({ message: 'SMS is disabled in settings' });
+        }
+        await smsService.sendSms(settings.recipients as unknown as string[], 'Test SMS from CannabisPOS', req.tenantPrisma!);
+        res.json({ message: 'Test SMS sent' });
+    } catch (error) {
+        console.error('Test SMS error', error);
+        res.status(500).json({ message: 'Unable to send test SMS' });
+    }
+});
+
+// LINE Webhook
+router.post('/line-webhook', async (req, res) => {
+    try {
+        const events = req.body.events; // LINE sends an array of events
+        if (!events || events.length === 0) {
+            return res.status(200).send('OK');
+        }
+
+        const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+        if (!token) {
+            console.error('LINE Token missing');
+            return res.status(500).send('Server Error');
+        }
+
+        for (const event of events) {
+            if (event.type === 'message' && event.message.type === 'text') {
+                const text = event.message.text.trim().toLowerCase();
+                if (text === 'id' || text === 'check') {
+                    const userId = event.source.userId;
+                    const replyToken = event.replyToken;
+
+                    // Reply with ID
+                    await fetch('https://api.line.me/v2/bot/message/reply', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            replyToken: replyToken,
+                            messages: [{
+                                type: 'text',
+                                text: `User ID ของคุณคือ:\n${userId}\n(Copy รหัสนี้ไปใส่ในหน้าตั้งค่าได้เลยครับ)`
+                            }]
+                        })
+                    });
+                }
+            }
+        }
+
+        res.status(200).send('OK');
+    } catch (error) {
+        console.error('LINE Webhook Error', error);
+        res.status(500).send('Error');
     }
 });
 

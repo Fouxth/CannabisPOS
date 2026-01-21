@@ -2,6 +2,7 @@ import express from 'express';
 import { managementPrisma } from '../lib/management-db';
 import { ProvisioningService } from '../services/ProvisioningService';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -224,7 +225,7 @@ router.get('/tenants/:id/users', async (req, res) => {
             select: {
                 id: true,
                 employeeCode: true,
-                email: true,
+                // email: true, // Renamed/Removed in schema?
                 fullName: true,
                 nickname: true,
                 phone: true,
@@ -241,6 +242,58 @@ router.get('/tenants/:id/users', async (req, res) => {
     } catch (error: any) {
         console.error('Failed to fetch tenant users:', error);
         res.status(500).json({ message: error.message || 'Failed to fetch tenant users' });
+    }
+});
+
+// POST /api/management/tenants/:id/users - Create a new user for a tenant
+router.post('/tenants/:id/users', async (req, res) => {
+    const { id: tenantId } = req.params;
+    const { username, password, fullName, role = 'ADMIN', employeeCode } = req.body;
+
+    if (!username || !password || !fullName || !employeeCode) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    try {
+        const tenant = await managementPrisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        // 1. Check if user exists in CENTRAL DB
+        const existingUser = await managementPrisma.user.findUnique({ where: { username } });
+        if (existingUser) return res.status(400).json({ message: 'Username already taken' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // 2. Create in CENTRAL Management DB
+        const newUserCentral = await managementPrisma.user.create({
+            data: {
+                username,
+                password: hashedPassword,
+                role,
+                tenantId,
+                isActive: true
+            }
+        });
+
+        // 3. Create in TENANT DB (Mirroring for FK integrity)
+        const tenantPrisma = await getTenantPrisma(tenantId);
+        await tenantPrisma.user.create({
+            data: {
+                id: newUserCentral.id, // KEEP ID SYNCED!
+                username,
+                password: hashedPassword,
+                fullName,
+                employeeCode,
+                role: role as any,
+                isActive: true
+            }
+        });
+        await tenantPrisma.$disconnect();
+
+        res.status(201).json(newUserCentral);
+    } catch (error: any) {
+        console.error('Failed to create tenant user:', error);
+        res.status(500).json({ message: error.message || 'Failed to create user' });
     }
 });
 
@@ -300,15 +353,87 @@ router.get('/tenants/:id/stats', async (req, res) => {
 
 // POST /api/management/tenants
 router.post('/tenants', async (req, res) => {
-    const { name, slug, domain } = req.body;
+    const { name, slug, domain, ownerName } = req.body;
 
     if (!name || !slug || !domain) {
         return res.status(400).json({ message: 'Missing required fields: name, slug, domain' });
     }
 
     try {
-        const tenant = await ProvisioningService.createTenant(name, slug, domain);
-        res.status(201).json(tenant);
+        const tenant = await ProvisioningService.createTenant(name, slug, domain, ownerName);
+
+        // Auto-create default owner
+        const username = `admin@${slug}`.toLowerCase();
+        const password = 'password123';
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const fullName = ownerName || 'Shop Owner';
+
+        // 1. Central DB
+        const user = await managementPrisma.user.create({
+            data: {
+                username,
+                password: hashedPassword,
+                role: 'OWNER',
+                tenantId: tenant.id,
+                isActive: true
+            }
+        });
+
+        // 2. Tenant DB
+        const tenantPrisma = await getTenantPrisma(tenant.id);
+        await tenantPrisma.user.create({
+            data: {
+                id: user.id,
+                username,
+                password: hashedPassword,
+                fullName,
+                employeeCode: 'OWN001',
+                role: 'OWNER',
+                isActive: true
+            }
+        });
+
+        // 3. Create default payment methods
+        await tenantPrisma.paymentMethod.createMany({
+            data: [
+                {
+                    name: 'เงินสด',
+                    nameEn: 'Cash',
+                    type: 'CASH',
+                    icon: 'Banknote',
+                    isActive: true
+                },
+                {
+                    name: 'โอนเงิน',
+                    nameEn: 'Transfer',
+                    type: 'TRANSFER',
+                    icon: 'ArrowLeftRight',
+                    isActive: true
+                }
+            ]
+        });
+        console.log('[Provisioning] ✅ Default payment methods created');
+
+        // 4. Set default Store Settings
+        await tenantPrisma.systemSetting.create({
+            data: {
+                key: 'store',
+                value: {
+                    storeName: name
+                }
+            }
+        });
+        console.log('[Provisioning] ✅ Default store settings created');
+
+        await tenantPrisma.$disconnect();
+
+        res.status(201).json({
+            ...tenant,
+            initialUser: {
+                username,
+                password
+            }
+        });
     } catch (error: any) {
         console.error('Failed to create tenant:', error);
         res.status(500).json({ message: error.message || 'Failed to create tenant' });

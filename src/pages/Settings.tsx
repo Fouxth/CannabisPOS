@@ -124,8 +124,8 @@ export default function Settings() {
       queryClient.setQueryData<PaymentMethod[]>(['payment-methods'], (prev) =>
         prev
           ? prev.map((method) =>
-              method.id === variables.id ? { ...method, isActive: variables.isActive } : method
-            )
+            method.id === variables.id ? { ...method, isActive: variables.isActive } : method
+          )
           : prev
       );
       toast.success('อัปเดตช่องทางการชำระเงินแล้ว');
@@ -160,8 +160,13 @@ export default function Settings() {
     }
   };
 
-  const handleSendTestSms = () => {
-    toast.success('ส่ง SMS ทดสอบสำเร็จ');
+  const handleSendTestSms = async () => {
+    try {
+      await api.sendTestSms();
+      toast.success('ส่ง SMS ทดสอบสำเร็จ');
+    } catch (error: any) {
+      toast.error(error.message || 'ไม่สามารถส่ง SMS ทดสอบได้');
+    }
   };
 
   const backupMutation = useMutation({
@@ -265,14 +270,7 @@ export default function Settings() {
                     onChange={(e) => setStoreForm({ ...storeForm, storeName: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="storeNameEn">ชื่อร้าน (อังกฤษ)</Label>
-                  <Input
-                    id="storeNameEn"
-                    value={storeForm.storeNameEn ?? ''}
-                    onChange={(e) => setStoreForm({ ...storeForm, storeNameEn: e.target.value })}
-                  />
-                </div>
+
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -305,14 +303,7 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="taxId">เลขประจำตัวผู้เสียภาษี</Label>
-                <Input
-                  id="taxId"
-                  value={storeForm.taxId ?? ''}
-                  onChange={(e) => setStoreForm({ ...storeForm, taxId: e.target.value })}
-                />
-              </div>
+
             </CardContent>
           </Card>
 
@@ -409,18 +400,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>เสียงเมื่อสแกน</Label>
-                    <p className="text-sm text-muted-foreground">เปิดเสียงเตือนเมื่อสแกน</p>
-                  </div>
-                  <Switch
-                    checked={posForm.scanSound}
-                    onCheckedChange={(checked) =>
-                      setPosForm({ ...posForm, scanSound: checked })
-                    }
-                  />
-                </div>
+
 
                 <div className="flex items-center justify-between">
                   <div>
@@ -490,14 +470,14 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* SMS Settings */}
+        {/* LINE Settings */}
         <TabsContent value="sms" className="space-y-6">
           <Card className="glass">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="font-display">ตั้งค่า SMS</CardTitle>
-                  <CardDescription>จัดการการแจ้งเตือนผ่าน SMS</CardDescription>
+                  <CardTitle className="font-display">การแจ้งเตือน LINE</CardTitle>
+                  <CardDescription>จัดการการแจ้งเตือนผ่าน LINE Official Account</CardDescription>
                 </div>
                 <Badge variant={smsForm.enabled ? 'default' : 'secondary'}>
                   {smsForm.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
@@ -507,8 +487,8 @@ export default function Settings() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between p-4 rounded-lg border">
                 <div>
-                  <Label>เปิดใช้งาน SMS</Label>
-                  <p className="text-sm text-muted-foreground">ส่งการแจ้งเตือนผ่าน SMS</p>
+                  <Label>เปิดใช้งานแจ้งเตือน</Label>
+                  <p className="text-sm text-muted-foreground">ส่งการแจ้งเตือนผ่าน LINE</p>
                 </div>
                 <Switch
                   checked={smsForm.enabled}
@@ -518,43 +498,18 @@ export default function Settings() {
 
               {smsForm.enabled && (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="smsProvider">ผู้ให้บริการ SMS</Label>
-                      <Select
-                        value={smsForm.provider}
-                        onValueChange={(value) => setSmsForm({ ...smsForm, provider: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกผู้ให้บริการ" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="twilio">Twilio</SelectItem>
-                          <SelectItem value="thaisms">ThaiSMS</SelectItem>
-                          <SelectItem value="thaibulksms">ThaiBulkSMS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smsSender">ชื่อผู้ส่ง</Label>
-                      <Input
-                        id="smsSender"
-                        value={smsForm.sender ?? ''}
-                        onChange={(e) => setSmsForm({ ...smsForm, sender: e.target.value })}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lineUserId">LINE User ID (สำหรับรับแจ้งเตือน)</Label>
+                    <Input
+                      id="lineUserId"
+                      value={smsRecipientsText}
+                      onChange={(e) => setSmsRecipientsText(e.target.value)}
+                      placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      ใส่ User ID ของคนที่ต้องการให้แจ้งเตือน (ไม่ใช่ LINE ID ทั่วไป)
+                    </p>
                   </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="smsRecipients">เบอร์โทรผู้รับ (คั่นด้วย , )</Label>
-                      <Textarea
-                        id="smsRecipients"
-                        value={smsRecipientsText}
-                        onChange={(e) => setSmsRecipientsText(e.target.value)}
-                        rows={2}
-                        placeholder="08X-XXX-XXXX"
-                      />
-                    </div>
 
                   <Separator />
 
@@ -564,7 +519,7 @@ export default function Settings() {
                       const titles: Record<string, { title: string; description: string }> = {
                         realtimeSales: {
                           title: 'แจ้งเตือนการขาย Real-time',
-                          description: 'ส่ง SMS ทุกครั้งที่มีการขาย',
+                          description: 'ส่งข้อความทุกครั้งที่มีการขาย',
                         },
                         dailySummary: {
                           title: 'สรุปยอดขายประจำวัน',
@@ -576,11 +531,11 @@ export default function Settings() {
                         },
                         lowStock: {
                           title: 'แจ้งเตือนสินค้าใกล้หมด',
-                          description: 'ส่ง SMS เมื่อสินค้าต่ำกว่าจำนวนขั้นต่ำ',
+                          description: 'ส่งข้อความเมื่อสินค้าต่ำกว่าจำนวนขั้นต่ำ',
                         },
                         stockAdjustments: {
                           title: 'แจ้งเตือนการปรับสต็อก',
-                          description: 'ส่ง SMS เมื่อมีการปรับปรุงสต็อก',
+                          description: 'ส่งข้อความเมื่อมีการปรับปรุงสต็อก',
                         },
                       };
                       const info = titles[key] ?? { title: key, description: '' };
@@ -611,7 +566,7 @@ export default function Settings() {
           <div className="flex justify-end gap-2">
             {smsForm.enabled && (
               <Button variant="outline" onClick={handleSendTestSms}>
-                ส่ง SMS ทดสอบ
+                ส่งข้อความทดสอบ
               </Button>
             )}
             <Button

@@ -24,10 +24,10 @@ export const DEFAULT_SETTINGS = {
     },
     sms: {
         enabled: true,
-        provider: 'twilio',
-        apiKey: '',
+        provider: 'line',
+        apiKey: '', // Start with empty
         sender: '',
-        recipients: ['081-234-5678', '082-345-6789'],
+        recipients: [], // Store Line User IDs
         alerts: {
             realtimeSales: true,
             dailySummary: true,

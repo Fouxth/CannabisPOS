@@ -7,8 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
     Loader2, Plus, Globe, Database, Store, Users, TrendingUp,
-    ShoppingCart, Search, Eye, Trash2, Calendar, Activity
+    ShoppingCart, Search, Eye, Trash2, Calendar, Activity, Copy, Check
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +38,7 @@ interface Tenant {
     domains: Array<{ domain: string }>;
     userCount?: number;
     lastActivity?: string;
+    ownerName?: string;
 }
 
 export default function TenantDashboard() {
@@ -45,7 +53,10 @@ export default function TenantDashboard() {
         name: '',
         slug: '',
         domain: '',
+        ownerName: '',
     });
+    const [createdUser, setCreatedUser] = useState<{ username: string, password: string } | null>(null);
+    const [copied, setCopied] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -83,21 +94,36 @@ export default function TenantDashboard() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.slug || !formData.domain) {
+        if (!formData.name || !formData.slug || !formData.domain || !formData.ownerName) {
             toast.error('Please fill in all fields');
             return;
         }
 
         setCreating(true);
         try {
-            await api.createTenant(formData);
-            toast.success('Tenant created successfully');
-            setFormData({ name: '', slug: '', domain: '' });
-            fetchData();
+            const response = await api.createTenant(formData);
+            if (response && response.initialUser) {
+                setCreatedUser(response.initialUser);
+                setFormData({ name: '', slug: '', domain: '', ownerName: '' });
+                fetchData();
+            } else {
+                toast.success('Tenant created successfully');
+                setFormData({ name: '', slug: '', domain: '', ownerName: '' });
+                fetchData();
+            }
         } catch (error: any) {
             toast.error(error.message || 'Failed to create tenant');
         } finally {
             setCreating(false);
+        }
+    };
+
+    const copyToClipboard = () => {
+        if (createdUser) {
+            navigator.clipboard.writeText(createdUser.password);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            toast.success('Password copied to clipboard');
         }
     };
 
@@ -267,17 +293,29 @@ export default function TenantDashboard() {
                                 <Input
                                     placeholder="e.g. green-day"
                                     value={formData.slug}
-                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                    onChange={(e) => {
+                                        const slug = e.target.value;
+                                        setFormData({
+                                            ...formData,
+                                            slug,
+                                            domain: slug ? `${slug}.local` : ''
+                                        });
+                                    }}
                                 />
+                                <p className="text-xs text-muted-foreground">This ID is used for the database name and URL.</p>
                             </div>
+
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Domain</label>
+                                <label className="text-sm font-medium">ชื่อเจ้าของร้าน</label>
                                 <Input
-                                    placeholder="e.g. greenday.local"
-                                    value={formData.domain}
-                                    onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
+                                    placeholder="เช่น สมชาย รักดี"
+                                    value={formData.ownerName}
+                                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
                                 />
                             </div>
+
+                            {/* Hidden Domain Input (Auto-generated) */}
+                            <input type="hidden" value={formData.domain} />
                             <Button type="submit" className="w-full" disabled={creating}>
                                 {creating ? (
                                     <>
@@ -322,7 +360,7 @@ export default function TenantDashboard() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Name</TableHead>
-                                            <TableHead>Domain</TableHead>
+                                            <TableHead>เจ้าของร้าน</TableHead>
                                             <TableHead>Users</TableHead>
                                             <TableHead>Last Activity</TableHead>
                                             <TableHead>Status</TableHead>
@@ -343,8 +381,10 @@ export default function TenantDashboard() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
-                                                        <Globe className="h-4 w-4 text-muted-foreground" />
-                                                        <span className="text-sm">{tenant.domains[0]?.domain}</span>
+                                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                                        <span className="text-sm font-medium">
+                                                            {tenant.ownerName || `admin@${tenant.slug}`}
+                                                        </span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
@@ -409,6 +449,50 @@ export default function TenantDashboard() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+
+
+            <Dialog open={!!createdUser} onOpenChange={(open) => !open && setCreatedUser(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-green-600">
+                            <Check className="h-6 w-6" />
+                            Shop Created Successfully!
+                        </DialogTitle>
+                        <DialogDescription>
+                            Your new shop is ready. Please save these admin credentials.
+                            <br /><span className="text-red-500 font-bold">IMPORTANT: The password is shown only once!</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Admin Username</label>
+                            <div className="p-3 bg-muted rounded-md font-mono text-sm select-all">
+                                {createdUser?.username}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Password</label>
+                            <div className="flex gap-2">
+                                <div className="p-3 bg-muted rounded-md font-mono text-sm flex-1 select-all">
+                                    {createdUser?.password}
+                                </div>
+                                <Button size="icon" variant="outline" onClick={copyToClipboard}>
+                                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground">Login URL</label>
+                            <div className="p-3 bg-muted rounded-md font-mono text-sm select-all">
+                                {window.location.origin}
+                            </div>
+                        </div>
+                    </div>
+                    <Button onClick={() => setCreatedUser(null)} className="w-full">
+                        Done
+                    </Button>
+                </DialogContent>
+            </Dialog>
+        </div >
     );
 }

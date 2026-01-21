@@ -1,16 +1,17 @@
 import { managementPrisma } from '../lib/management-db';
-import { execSync } from 'child_process';
 import dotenv from 'dotenv';
+import { execSync } from 'child_process';
 
 dotenv.config();
 
 export class ProvisioningService {
-    static async createTenant(name: string, slug: string, domain: string) {
+    static async createTenant(name: string, slug: string, domain: string, ownerName?: string) {
         const dbName = `cannabispos_tenant_${slug.replace(/-/g, '_')}`;
         const baseUrl = process.env.DATABASE_URL!;
         const dbUrl = baseUrl.replace(/\/[^/]+$/, `/${dbName}`);
 
         console.log(`[Provisioning] Creating tenant: ${name} (${slug})`);
+        console.log(`[Provisioning] Target DB URL: ${dbUrl.replace(/:[^:@]+@/, ':***@')}`);
 
         // 1. Create Database
         try {
@@ -21,47 +22,54 @@ export class ProvisioningService {
                 console.log(`[Provisioning] ⚠️ Database ${dbName} already exists, skipping creation.`);
             } else {
                 console.error('[Provisioning] ❌ Error creating DB:', e);
-                throw e;
             }
         }
 
-        // 2. Run Migrations & Seed
-        console.log('[Provisioning] 🔄 Running migrations...');
+        // 2. Create Tenant Record
+        let tenant;
         try {
-            execSync(`DATABASE_URL="${dbUrl}" npx prisma migrate deploy`, { stdio: 'inherit' });
-            console.log('[Provisioning] ✅ Migrations applied.');
-
-            console.log('[Provisioning] 🌱 Seeding database...');
-            execSync(`DATABASE_URL="${dbUrl}" npx tsx prisma/seed.ts`, { stdio: 'inherit' });
-            console.log('[Provisioning] ✅ Database seeded.');
-        } catch (e) {
-            console.error('[Provisioning] ❌ Migration/Seed failed:', e);
-            throw e;
-        }
-
-        // 3. Create Tenant Record
-        try {
-            const tenant = await managementPrisma.tenant.create({
+            tenant = await managementPrisma.tenant.create({
                 data: {
                     name,
                     slug,
                     dbName,
                     dbUrl,
+                    ownerName,
                     domains: {
-                        create: {
-                            domain,
-                        },
+                        create: { domain },
                     },
+                    isActive: true
                 },
-                include: {
-                    domains: true,
-                },
+                include: { domains: true },
             });
-            console.log('[Provisioning] ✅ Tenant record created:', tenant);
-            return tenant;
+            console.log('[Provisioning] ✅ Tenant record created');
         } catch (e) {
             console.error('[Provisioning] ❌ Failed to create tenant record:', e);
             throw e;
         }
+
+        // 3. Create tables using prisma db push (execSync for reliability)
+        console.log('[Provisioning] 🔄 Creating tables with prisma db push...');
+        try {
+            const result = execSync(
+                'npx prisma db push --skip-generate --accept-data-loss',
+                {
+                    cwd: process.cwd(),
+                    env: { ...process.env, DATABASE_URL: dbUrl },
+                    encoding: 'utf-8',
+                    timeout: 60000, // 60 second timeout
+                    stdio: 'pipe'
+                }
+            );
+            console.log('[Provisioning] Prisma output:', result);
+            console.log('[Provisioning] ✅ Tables created successfully!');
+        } catch (e: any) {
+            console.error('[Provisioning] ❌ Table creation failed:', e.message);
+            console.error('[Provisioning] stdout:', e.stdout);
+            console.error('[Provisioning] stderr:', e.stderr);
+            throw new Error('Failed to create database tables: ' + e.message);
+        }
+
+        return tenant;
     }
 }
