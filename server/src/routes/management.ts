@@ -1,7 +1,7 @@
 import express from 'express';
 import { managementPrisma } from '../lib/management-db';
 import { ProvisioningService } from '../services/ProvisioningService';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/client/index.js';
 import bcrypt from 'bcryptjs';
 
 const router = express.Router();

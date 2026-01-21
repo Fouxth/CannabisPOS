@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/client/index.js';
 import { TenantManager } from '../services/TenantManager';
 
 // Extend Express Request type

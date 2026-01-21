@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "prisma generate --schema=./server/prisma/schema.prisma && prisma generate --schema=./server/prisma/management/schema.prisma"
+    "postinstall": "npx prisma generate --schema=./server/prisma/schema.prisma && npx prisma generate --schema=./server/prisma/management/schema.prisma"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
