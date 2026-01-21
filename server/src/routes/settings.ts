@@ -104,51 +104,6 @@ router.post('/test-sms', async (req, res) => {
     }
 });
 
-// LINE Webhook
-router.post('/line-webhook', async (req, res) => {
-    try {
-        const events = req.body.events; // LINE sends an array of events
-        if (!events || events.length === 0) {
-            return res.status(200).send('OK');
-        }
-
-        const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-        if (!token) {
-            console.error('LINE Token missing');
-            return res.status(500).send('Server Error');
-        }
-
-        for (const event of events) {
-            if (event.type === 'message' && event.message.type === 'text') {
-                const text = event.message.text.trim().toLowerCase();
-                if (text === 'id' || text === 'check') {
-                    const userId = event.source.userId;
-                    const replyToken = event.replyToken;
-
-                    // Reply with ID
-                    await fetch('https://api.line.me/v2/bot/message/reply', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            replyToken: replyToken,
-                            messages: [{
-                                type: 'text',
-                                text: `User ID ของคุณคือ:\n${userId}\n(Copy รหัสนี้ไปใส่ในหน้าตั้งค่าได้เลยครับ)`
-                            }]
-                        })
-                    });
-                }
-            }
-        }
-
-        res.status(200).send('OK');
-    } catch (error) {
-        console.error('LINE Webhook Error', error);
-        res.status(500).send('Error');
-    }
-});
+// LINE Webhook removed (moved to auth routes for public access)
 
 export const settingsRouter = router;
