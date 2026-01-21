@@ -89,15 +89,70 @@ router.put('/payment-methods/:id', async (req, res) => {
     }
 });
 
-// Test SMS
+// Test SMS - Send all Flex Message types
 router.post('/test-sms', async (req, res) => {
     try {
         const settings = await getSettingValue('sms', req.tenantPrisma!);
         if (!settings.enabled) {
             return res.status(400).json({ message: 'SMS is disabled in settings' });
         }
-        await smsService.sendSms(settings.recipients as unknown as string[], 'Test SMS from CannabisPOS', req.tenantPrisma!);
-        res.json({ message: 'Test SMS sent' });
+
+        // Sample data for testing
+        const sampleSaleItems = [
+            { name: 'สินค้าตัวอย่าง A', quantity: 2, price: 500 },
+            { name: 'สินค้าตัวอย่าง B', quantity: 1, price: 350 },
+        ];
+
+        // Send all 4 Flex Message types for testing
+        await Promise.all([
+            // 1. Sales Flex
+            smsService.sendSalesAlert(
+                'TEST-' + Date.now().toString().slice(-6),
+                850,
+                sampleSaleItems,
+                'cash',
+                req.tenantPrisma!
+            ),
+            // 2. Low Stock Flex
+            smsService.sendLowStockAlert(
+                'สินค้าตัวอย่าง',
+                5,
+                10,
+                'ชิ้น',
+                req.tenantPrisma!
+            ),
+            // 3. Stock Adjustment Flex
+            smsService.sendStockAdjustmentAlert(
+                'สินค้าตัวอย่าง',
+                50,
+                45,
+                'ทดสอบระบบ',
+                req.tenantPrisma!
+            ),
+            // 4. Daily Summary Flex
+            smsService.sendDailySummaryAlert(
+                12500,
+                15,
+                3200,
+                'สินค้าขายดี',
+                8500,
+                4000,
+                req.tenantPrisma!
+            ),
+            // 5. Monthly Summary Flex
+            smsService.sendMonthlySummaryAlert(
+                new Date().toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }),
+                385000,
+                156,
+                85000,
+                250000,
+                135000,
+                'สินค้าขายดีประจำเดือน',
+                req.tenantPrisma!
+            ),
+        ]);
+
+        res.json({ message: 'ส่ง Flex Message ทดสอบ 5 รายการเรียบร้อย!' });
     } catch (error) {
         console.error('Test SMS error', error);
         res.status(500).json({ message: 'Unable to send test SMS' });

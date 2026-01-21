@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Notification, CreateNotificationDto, UnreadCountResponse } from '@/types/notification';
+import { useEffect } from 'react';
+import { useSocket } from '@/contexts/SocketContext';
+import { toast } from 'sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -14,6 +17,33 @@ const getAuthHeaders = (): HeadersInit => {
 };
 
 export const useNotifications = (userId: string | undefined) => {
+    const queryClient = useQueryClient();
+    const { socket } = useSocket();
+
+    useEffect(() => {
+        if (!socket || !userId) return;
+
+        const handleNotification = (notification: any) => {
+            console.log('🔔 Real-time notification received:', notification);
+
+            // Show toast
+            toast(notification.title, {
+                description: notification.message,
+                icon: notification.type === 'low_stock' ? '📦' : '🎉',
+            });
+
+            // Invalidate queries to fetch fresh data
+            queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+            queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count', userId] });
+        };
+
+        socket.on('notification_received', handleNotification);
+
+        return () => {
+            socket.off('notification_received', handleNotification);
+        };
+    }, [socket, userId, queryClient]);
+
     return useQuery({
         queryKey: ['notifications', userId],
         queryFn: async () => {

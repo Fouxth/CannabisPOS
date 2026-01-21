@@ -9,52 +9,44 @@ interface SaleItem {
 }
 
 // Flex Message Templates
-const createSalesFlexMessage = (saleNumber: string, total: number, items: SaleItem[]) => ({
+const PAYMENT_LABELS: Record<string, string> = {
+    cash: '💵 เงินสด',
+    transfer: '🏦 โอน',
+    qr: '📱 QR',
+    card: '💳 บัตร',
+};
+
+const getFontSize = (value: number, baseSize: 'xl' | 'xxl' = 'xl'): string => {
+    const num = Number(value) || 0;
+    if (num >= 1000000) return 'sm';
+    if (num >= 100000) return 'md';
+    if (num >= 10000) return 'lg';
+    return baseSize;
+};
+
+const createSalesFlexMessage = (saleNumber: string, total: number, items: SaleItem[], paymentMethod: string = 'cash') => ({
     type: 'flex',
-    altText: `มีรายการขายใหม่ #${saleNumber}`,
+    altText: `🧾 ขายได้ ฿${(Number(total) || 0).toLocaleString()}`,
     contents: {
         type: 'bubble',
-        size: 'mega',
-        header: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-                {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                        {
-                            type: 'text',
-                            text: '💰',
-                            size: 'xxl',
-                            flex: 0
-                        },
-                        {
-                            type: 'text',
-                            text: 'รายการขายใหม่',
-                            color: '#ffffff',
-                            size: 'xl',
-                            weight: 'bold',
-                            margin: 'md',
-                            flex: 1
-                        }
-                    ],
-                    alignItems: 'center'
-                }
-            ],
-            backgroundColor: '#10b981',
-            paddingAll: '20px'
-        },
+        size: 'kilo',
         body: {
             type: 'box',
             layout: 'vertical',
             contents: [
                 {
                     type: 'text',
-                    text: `#${saleNumber}`,
+                    text: '🧾 รายการขายใหม่',
                     weight: 'bold',
                     size: 'md',
-                    color: '#666666'
+                    color: '#1a1a1a'
+                },
+                {
+                    type: 'text',
+                    text: `#${saleNumber}`,
+                    size: 'xs',
+                    color: '#888888',
+                    margin: 'xs'
                 },
                 {
                     type: 'separator',
@@ -72,25 +64,26 @@ const createSalesFlexMessage = (saleNumber: string, total: number, items: SaleIt
                         contents: [
                             {
                                 type: 'text' as const,
-                                text: item.name,
+                                text: item.name || 'สินค้า',
                                 size: 'sm' as const,
-                                color: '#333333',
+                                color: '#555555',
                                 flex: 3,
-                                wrap: true
+                                wrap: false
                             },
                             {
                                 type: 'text' as const,
-                                text: `x${item.quantity}`,
+                                text: `×${Number(item.quantity) || 0}`,
                                 size: 'sm' as const,
-                                color: '#666666',
-                                align: 'center' as const,
+                                color: '#888888',
+                                align: 'end' as const,
                                 flex: 1
                             },
                             {
                                 type: 'text' as const,
-                                text: `฿${item.price.toLocaleString()}`,
+                                text: `฿${(Number(item.price) || 0).toLocaleString()}`,
                                 size: 'sm' as const,
-                                color: '#10b981',
+                                color: '#111111',
+                                weight: 'bold' as const,
                                 align: 'end' as const,
                                 flex: 2
                             }
@@ -115,18 +108,16 @@ const createSalesFlexMessage = (saleNumber: string, total: number, items: SaleIt
                     contents: [
                         {
                             type: 'text',
-                            text: 'ยอดรวม',
-                            size: 'lg',
-                            color: '#666666',
-                            weight: 'bold',
-                            flex: 1
+                            text: 'รวม',
+                            size: 'md',
+                            color: '#555555'
                         },
                         {
                             type: 'text',
-                            text: `฿${total.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
-                            size: 'xl',
+                            text: `฿${(Number(total) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
+                            size: getFontSize(total),
                             weight: 'bold',
-                            color: '#10b981',
+                            color: '#1a1a1a',
                             align: 'end'
                         }
                     ]
@@ -148,6 +139,28 @@ const createSalesFlexMessage = (saleNumber: string, total: number, items: SaleIt
                             text: `${items.length} รายการ`,
                             size: 'sm',
                             color: '#999999',
+                            align: 'end'
+                        }
+                    ]
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'sm',
+                    contents: [
+                        {
+                            type: 'text',
+                            text: 'ชำระ',
+                            size: 'sm',
+                            color: '#999999',
+                            flex: 1
+                        },
+                        {
+                            type: 'text',
+                            text: PAYMENT_LABELS[paymentMethod] || paymentMethod,
+                            size: 'sm',
+                            color: '#555555',
+                            weight: 'bold',
                             align: 'end'
                         }
                     ]
@@ -177,46 +190,25 @@ const createLowStockFlexMessage = (productName: string, currentStock: number, mi
     altText: `⚠️ สินค้าใกล้หมด: ${productName}`,
     contents: {
         type: 'bubble',
-        size: 'mega',
-        header: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-                {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                        {
-                            type: 'text',
-                            text: '⚠️',
-                            size: 'xxl',
-                            flex: 0
-                        },
-                        {
-                            type: 'text',
-                            text: 'สินค้าใกล้หมด!',
-                            color: '#ffffff',
-                            size: 'xl',
-                            weight: 'bold',
-                            margin: 'md',
-                            flex: 1
-                        }
-                    ],
-                    alignItems: 'center'
-                }
-            ],
-            backgroundColor: '#f59e0b',
-            paddingAll: '20px'
-        },
+        size: 'kilo',
         body: {
             type: 'box',
             layout: 'vertical',
             contents: [
                 {
                     type: 'text',
-                    text: productName,
+                    text: '⚠️ สินค้าใกล้หมด',
                     weight: 'bold',
+                    size: 'md',
+                    color: '#f59e0b'
+                },
+                {
+                    type: 'text',
+                    text: productName || 'สินค้า',
                     size: 'lg',
+                    weight: 'bold',
+                    color: '#1a1a1a',
+                    margin: 'md',
                     wrap: true
                 },
                 {
@@ -300,46 +292,25 @@ const createStockAdjustmentFlexMessage = (
     altText: `📦 ปรับสต็อก: ${productName}`,
     contents: {
         type: 'bubble',
-        size: 'mega',
-        header: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-                {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                        {
-                            type: 'text',
-                            text: '📦',
-                            size: 'xxl',
-                            flex: 0
-                        },
-                        {
-                            type: 'text',
-                            text: 'ปรับปรุงสต็อก',
-                            color: '#ffffff',
-                            size: 'xl',
-                            weight: 'bold',
-                            margin: 'md',
-                            flex: 1
-                        }
-                    ],
-                    alignItems: 'center'
-                }
-            ],
-            backgroundColor: '#06b6d4',
-            paddingAll: '20px'
-        },
+        size: 'kilo',
         body: {
             type: 'box',
             layout: 'vertical',
             contents: [
                 {
                     type: 'text',
-                    text: productName,
+                    text: '📦 ปรับปรุงสต็อก',
                     weight: 'bold',
+                    size: 'md',
+                    color: '#06b6d4'
+                },
+                {
+                    type: 'text',
+                    text: productName || 'สินค้า',
                     size: 'lg',
+                    weight: 'bold',
+                    color: '#1a1a1a',
+                    margin: 'md',
                     wrap: true
                 },
                 {
@@ -476,71 +447,59 @@ const createDailySummaryFlexMessage = (
     totalSales: number,
     orderCount: number,
     profit: number,
-    topProduct?: string
+    topProduct?: string,
+    cashTotal: number = 0,
+    transferTotal: number = 0
 ) => ({
     type: 'flex',
-    altText: `📊 สรุปยอดขายวันนี้ ฿${totalSales.toLocaleString()}`,
+    altText: `📊 สรุปยอดขาย ฿${(Number(totalSales) || 0).toLocaleString()}`,
     contents: {
         type: 'bubble',
-        size: 'mega',
-        header: {
-            type: 'box',
-            layout: 'vertical',
-            contents: [
-                {
-                    type: 'box',
-                    layout: 'horizontal',
-                    contents: [
-                        {
-                            type: 'text',
-                            text: '📊',
-                            size: 'xxl',
-                            flex: 0
-                        },
-                        {
-                            type: 'text',
-                            text: 'สรุปยอดขายวันนี้',
-                            color: '#ffffff',
-                            size: 'xl',
-                            weight: 'bold',
-                            margin: 'md',
-                            flex: 1
-                        }
-                    ],
-                    alignItems: 'center'
-                }
-            ],
-            backgroundColor: '#3b82f6',
-            paddingAll: '20px'
-        },
+        size: 'kilo',
         body: {
             type: 'box',
             layout: 'vertical',
             contents: [
                 {
+                    type: 'text',
+                    text: '📊 สรุปยอดขายวันนี้',
+                    weight: 'bold',
+                    size: 'md',
+                    color: '#3b82f6'
+                },
+                {
+                    type: 'text',
+                    text: new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+                    size: 'xs',
+                    color: '#888888',
+                    margin: 'xs'
+                },
+                {
+                    type: 'separator',
+                    margin: 'lg'
+                },
+                {
                     type: 'box',
-                    layout: 'vertical',
+                    layout: 'horizontal',
+                    margin: 'lg',
                     contents: [
                         {
                             type: 'text',
                             text: 'ยอดขายรวม',
                             size: 'sm',
-                            color: '#666666',
-                            align: 'center'
+                            color: '#555555',
+                            flex: 2
                         },
                         {
                             type: 'text',
-                            text: `฿${totalSales.toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
-                            size: 'xxl',
+                            text: `฿${(Number(totalSales) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
+                            size: getFontSize(totalSales),
                             weight: 'bold',
-                            color: '#10b981',
-                            align: 'center',
-                            margin: 'sm'
+                            color: '#1a1a1a',
+                            align: 'end',
+                            flex: 5
                         }
-                    ],
-                    backgroundColor: '#f0fdf4',
-                    paddingAll: '15px',
-                    cornerRadius: 'lg'
+                    ]
                 },
                 {
                     type: 'separator',
@@ -629,7 +588,65 @@ const createDailySummaryFlexMessage = (
                         paddingAll: '10px',
                         cornerRadius: 'md' as const
                     }
-                ] : [])
+                ] : []),
+                {
+                    type: 'separator',
+                    margin: 'lg'
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'lg',
+                    contents: [
+                        {
+                            type: 'box',
+                            layout: 'vertical',
+                            contents: [
+                                {
+                                    type: 'text',
+                                    text: '💵 เงินสด',
+                                    size: 'xs',
+                                    color: '#888888',
+                                    align: 'center'
+                                },
+                                {
+                                    type: 'text',
+                                    text: `฿${(Number(cashTotal) || 0).toLocaleString()}`,
+                                    size: 'md',
+                                    weight: 'bold',
+                                    align: 'center',
+                                    color: '#22c55e'
+                                }
+                            ],
+                            flex: 1
+                        },
+                        {
+                            type: 'separator'
+                        },
+                        {
+                            type: 'box',
+                            layout: 'vertical',
+                            contents: [
+                                {
+                                    type: 'text',
+                                    text: '🏦 โอน',
+                                    size: 'xs',
+                                    color: '#888888',
+                                    align: 'center'
+                                },
+                                {
+                                    type: 'text',
+                                    text: `฿${(Number(transferTotal) || 0).toLocaleString()}`,
+                                    size: 'md',
+                                    weight: 'bold',
+                                    align: 'center',
+                                    color: '#3b82f6'
+                                }
+                            ],
+                            flex: 1
+                        }
+                    ]
+                }
             ],
             paddingAll: '20px'
         },
@@ -650,6 +667,186 @@ const createDailySummaryFlexMessage = (
                 }
             ],
             paddingAll: '10px'
+        }
+    }
+});
+
+// Monthly Summary Flex Message
+const createMonthlySummaryFlexMessage = (
+    month: string,
+    totalSales: number,
+    orderCount: number,
+    profit: number,
+    cashTotal: number = 0,
+    transferTotal: number = 0,
+    topProduct?: string
+) => ({
+    type: 'flex',
+    altText: `📈 สรุปยอดขายเดือน ${month}`,
+    contents: {
+        type: 'bubble',
+        size: 'kilo',
+        body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+                {
+                    type: 'text',
+                    text: '📈 สรุปยอดขายประจำเดือน',
+                    weight: 'bold',
+                    size: 'md',
+                    color: '#8b5cf6'
+                },
+                {
+                    type: 'text',
+                    text: month || 'เดือนนี้',
+                    size: 'xs',
+                    color: '#888888',
+                    margin: 'xs'
+                },
+                {
+                    type: 'separator',
+                    margin: 'lg'
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'lg',
+                    contents: [
+                        {
+                            type: 'text',
+                            text: 'ยอดขายรวม',
+                            size: 'sm',
+                            color: '#555555',
+                            flex: 2
+                        },
+                        {
+                            type: 'text',
+                            text: `฿${(Number(totalSales) || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 })}`,
+                            size: getFontSize(totalSales),
+                            weight: 'bold',
+                            color: '#1a1a1a',
+                            align: 'end',
+                            flex: 5
+                        }
+                    ]
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'sm',
+                    contents: [
+                        {
+                            type: 'text',
+                            text: 'จำนวนรายการ',
+                            size: 'xs',
+                            color: '#888888'
+                        },
+                        {
+                            type: 'text',
+                            text: `${Number(orderCount) || 0} รายการ`,
+                            size: 'xs',
+                            color: '#888888',
+                            align: 'end'
+                        }
+                    ]
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'sm',
+                    contents: [
+                        {
+                            type: 'text',
+                            text: 'กำไร',
+                            size: 'xs',
+                            color: '#888888'
+                        },
+                        {
+                            type: 'text',
+                            text: `฿${(Number(profit) || 0).toLocaleString()}`,
+                            size: 'sm',
+                            weight: 'bold',
+                            color: '#22c55e',
+                            align: 'end'
+                        }
+                    ]
+                },
+                {
+                    type: 'separator',
+                    margin: 'lg'
+                },
+                {
+                    type: 'box',
+                    layout: 'horizontal',
+                    margin: 'lg',
+                    contents: [
+                        {
+                            type: 'box',
+                            layout: 'vertical',
+                            contents: [
+                                {
+                                    type: 'text',
+                                    text: '💵 เงินสด',
+                                    size: 'xs',
+                                    color: '#888888',
+                                    align: 'center'
+                                },
+                                {
+                                    type: 'text',
+                                    text: `฿${(Number(cashTotal) || 0).toLocaleString()}`,
+                                    size: 'sm',
+                                    weight: 'bold',
+                                    align: 'center',
+                                    color: '#22c55e'
+                                }
+                            ],
+                            flex: 1
+                        },
+                        {
+                            type: 'separator'
+                        },
+                        {
+                            type: 'box',
+                            layout: 'vertical',
+                            contents: [
+                                {
+                                    type: 'text',
+                                    text: '🏦 โอน',
+                                    size: 'xs',
+                                    color: '#888888',
+                                    align: 'center'
+                                },
+                                {
+                                    type: 'text',
+                                    text: `฿${(Number(transferTotal) || 0).toLocaleString()}`,
+                                    size: 'sm',
+                                    weight: 'bold',
+                                    align: 'center',
+                                    color: '#3b82f6'
+                                }
+                            ],
+                            flex: 1
+                        }
+                    ]
+                },
+                ...(topProduct ? [{
+                    type: 'box' as const,
+                    layout: 'vertical' as const,
+                    margin: 'lg' as const,
+                    contents: [
+                        {
+                            type: 'text' as const,
+                            text: `🏆 สินค้าขายดี: ${topProduct}`,
+                            size: 'xs' as const,
+                            color: '#8b5cf6',
+                            align: 'center' as const
+                        }
+                    ]
+                }] : [])
+            ],
+            paddingAll: '20px',
+            backgroundColor: '#ffffff'
         }
     }
 });
@@ -697,14 +894,14 @@ export class SmsService {
     }
 
     // Send Flex Message for sales with item details
-    async sendSalesAlert(saleNumber: string, total: number, items: SaleItem[], tenantPrisma: PrismaClient) {
+    async sendSalesAlert(saleNumber: string, total: number, items: SaleItem[], paymentMethod: string, tenantPrisma: PrismaClient) {
         try {
             const settings = await getSettingValue('sms', tenantPrisma);
             if (!settings.enabled || !(settings.alerts as any).realtimeSales) {
                 return;
             }
             const recipients = settings.recipients as unknown as string[];
-            const flexMessage = createSalesFlexMessage(saleNumber, total, items);
+            const flexMessage = createSalesFlexMessage(saleNumber, total, items, paymentMethod);
             await this.sendLineFlex(recipients, flexMessage);
         } catch (error) {
             console.error('❌ Error sending sales alert:', error);
@@ -754,6 +951,8 @@ export class SmsService {
         orderCount: number,
         profit: number,
         topProduct: string | undefined,
+        cashTotal: number,
+        transferTotal: number,
         tenantPrisma: PrismaClient
     ) {
         try {
@@ -762,10 +961,34 @@ export class SmsService {
                 return;
             }
             const recipients = settings.recipients as unknown as string[];
-            const flexMessage = createDailySummaryFlexMessage(totalSales, orderCount, profit, topProduct);
+            const flexMessage = createDailySummaryFlexMessage(totalSales, orderCount, profit, topProduct, cashTotal, transferTotal);
             await this.sendLineFlex(recipients, flexMessage);
         } catch (error) {
             console.error('❌ Error sending daily summary alert:', error);
+        }
+    }
+
+    // Send Flex Message for monthly summary
+    async sendMonthlySummaryAlert(
+        month: string,
+        totalSales: number,
+        orderCount: number,
+        profit: number,
+        cashTotal: number,
+        transferTotal: number,
+        topProduct: string | undefined,
+        tenantPrisma: PrismaClient
+    ) {
+        try {
+            const settings = await getSettingValue('sms', tenantPrisma);
+            if (!settings.enabled || !(settings.alerts as any).monthlySummary) {
+                return;
+            }
+            const recipients = settings.recipients as unknown as string[];
+            const flexMessage = createMonthlySummaryFlexMessage(month, totalSales, orderCount, profit, cashTotal, transferTotal, topProduct);
+            await this.sendLineFlex(recipients, flexMessage);
+        } catch (error) {
+            console.error('❌ Error sending monthly summary alert:', error);
         }
     }
 

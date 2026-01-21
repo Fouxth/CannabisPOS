@@ -27,6 +27,7 @@ import TenantDetails from "./pages/admin/TenantDetails";
 import TenantUsers from "./pages/admin/TenantUsers";
 import TenantActivity from "./pages/admin/TenantActivity";
 import { useAuth } from "@/hooks/useAuth";
+import { SocketProvider } from "./contexts/SocketContext";
 
 const queryClient = new QueryClient();
 
@@ -51,44 +52,46 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="cannabispos-theme">
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/suspended" element={<Suspended />} />
-            <Route path="/" element={<RootRedirect />} />
+        <SocketProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/suspended" element={<Suspended />} />
+              <Route path="/" element={<RootRedirect />} />
 
-            {/* Admin Routes */}
-            <Route element={<AdminRoute />}>
-              <Route element={<AdminLayout />}>
-                <Route path="/admin" element={<TenantDashboard />} />
-                <Route path="/admin/tenants/:id" element={<TenantDetails />} />
-                <Route path="/admin/tenants/:id/users" element={<TenantUsers />} />
-                <Route path="/admin/activity" element={<TenantActivity />} />
+              {/* Admin Routes */}
+              <Route element={<AdminRoute />}>
+                <Route element={<AdminLayout />}>
+                  <Route path="/admin" element={<TenantDashboard />} />
+                  <Route path="/admin/tenants/:id" element={<TenantDetails />} />
+                  <Route path="/admin/tenants/:id/users" element={<TenantUsers />} />
+                  <Route path="/admin/activity" element={<TenantActivity />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* Main App Routes */}
-            <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/pos" element={<POS />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/stock" element={<Stock />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/bills" element={<Bills />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/promotions" element={<Promotions />} />
-            </Route>
+              {/* Main App Routes */}
+              <Route element={<MainLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/pos" element={<POS />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/stock" element={<Stock />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/expenses" element={<Expenses />} />
+                <Route path="/bills" element={<Bills />} />
+                <Route path="/users" element={<Users />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/promotions" element={<Promotions />} />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </SocketProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider >

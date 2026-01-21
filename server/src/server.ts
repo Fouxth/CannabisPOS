@@ -27,8 +27,15 @@ import { analyticsRouter } from './routes/analytics';
 import { getUserPermissions } from './middleware/permissions';
 import { backupRouter } from './routes/backup';
 
+import { createServer } from 'http';
+import { socketService } from './services/SocketService';
+
 const app = express();
+const httpServer = createServer(app);
 const PORT = Number(process.env.PORT) || 3000;
+
+// Initialize Socket Service
+socketService.init(httpServer);
 
 // Middleware
 app.use(
@@ -96,7 +103,7 @@ app.post('/api/reset', async (req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
         console.log(`🚀 API server running on http://localhost:${PORT}`);
     });
 }

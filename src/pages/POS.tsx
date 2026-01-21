@@ -399,10 +399,10 @@ export default function POS() {
 
                         {/* Price */}
                         <div className="w-full py-1">
-                          <div className="bg-[#E3F9E5] rounded-xl py-2 px-4 mb-2 inline-block w-full max-w-[180px]">
-                            <p className="text-xl font-bold text-[#1F875F]">
+                          <div className="bg-primary/10 border border-primary/20 rounded-xl py-2 px-4 mb-2 inline-block w-full max-w-[180px]">
+                            <p className="text-xl font-bold text-primary">
                               ฿{formatCurrency(product.price)}
-                              <span className="text-sm font-normal text-[#1F875F]/70 ml-1">/{product.stockUnit}</span>
+                              <span className="text-sm font-normal text-primary/70 ml-1">/{product.stockUnit}</span>
                             </p>
                           </div>
                         </div>

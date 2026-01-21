@@ -3,6 +3,7 @@ import { MovementType, PaymentStatus, SaleStatus, BillStatus, NotificationType }
 import { toBillDto, toSaleDto, createNotification } from '../utils/dtos';
 import { generateDocumentNumber, normalizePaymentMethod, decimalToNumber, getSettingValue } from '../utils/helpers';
 import { smsService } from '../services/SmsService';
+import { socketService } from '../services/SocketService';
 import { requirePermission } from '../middleware/permissions';
 
 const router = Router();
@@ -155,13 +156,17 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
 
                 // Check for low stock
                 if (updatedProduct.stock <= updatedProduct.minStock) {
-                    await createNotification(
+                    const notification = await createNotification(
                         userId,
                         NotificationType.LOW_STOCK,
                         'สินค้าใกล้หมด',
                         `สินค้า ${product.name} เหลือ ${updatedProduct.stock} ${product.stockUnit} (ต่ำกว่าขั้นต่ำ ${updatedProduct.minStock})`,
                         tx as any
                     );
+
+                    if (notification) {
+                        socketService.sendNotification(req.tenantId!, userId, notification);
+                    }
                     // Send Flex Message for low stock
                     smsService.sendLowStockAlert(
                         product.name,
@@ -245,7 +250,7 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                 const previousMilestone = Math.floor(previousTotal / milestoneStep);
 
                 if (currentMilestone > previousMilestone && currentMilestone > 0) {
-                    await tx.notification.create({
+                    const notification = await tx.notification.create({
                         data: {
                             userId,
                             type: NotificationType.SALES_MILESTONE,
@@ -253,6 +258,9 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                             message: `ยอดขายวันนี้ทะลุ ${(currentMilestone * milestoneStep).toLocaleString()} บาทแล้ว! (ยอดรวม: ${currentTotal.toLocaleString()} บาท)`,
                         }
                     });
+
+                    // Emit to socket
+                    socketService.sendNotification(req.tenantId!, userId, notification);
                 }
             }
 
@@ -266,12 +274,13 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
         const saleItems = result.sale.items.map((item: any) => ({
             name: item.productName || 'สินค้า',
             quantity: item.quantity,
-            price: Number(item.totalPrice)
+            price: Number(item.total) || (Number(item.unitPrice) * item.quantity)
         }));
         smsService.sendSalesAlert(
             result.sale.saleNumber,
             Number(result.sale.totalAmount),
             saleItems,
+            result.bill.paymentMethod,
             req.tenantPrisma!
         ).catch(err => console.error('Failed to send sales Flex Message', err));
 

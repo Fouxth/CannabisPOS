@@ -213,7 +213,7 @@ export const api = {
     }
     return response;
   },
-  backupData: () => requestBlob('/backup'),
+  backupData: () => requestBlob('/backup/download'),
   resetData: () =>
     request<{ message: string }>('/reset', {
       method: 'POST',

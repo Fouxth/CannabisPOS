@@ -667,9 +667,9 @@ export default function Settings() {
                     <p className="text-sm text-muted-foreground">แสดงการแจ้งเตือนเมื่อยอดขายถึงเป้าหมาย</p>
                   </div>
                   <Switch
-                    checked={false}
-                    onCheckedChange={() =>
-                      toast.info('ฟีเจอร์นี้กำลังอยู่ในระหว่างการพัฒนา (Coming Soon)')
+                    checked={(notificationForm as any).salesTarget ?? false}
+                    onCheckedChange={(checked) =>
+                      setNotificationForm({ ...notificationForm, salesTarget: checked } as any)
                     }
                   />
                 </div>
@@ -749,58 +749,8 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
-
-          <Card className="glass border-destructive">
-            <CardHeader>
-              <CardTitle className="font-display text-destructive">รีเซ็ตข้อมูล</CardTitle>
-              <CardDescription>
-                การดำเนินการนี้จะลบข้อมูลการขาย, บิล, และประวัติสต็อกทั้งหมดอย่างถาวร
-                ข้อมูลสินค้า, หมวดหมู่, และผู้ใช้งานจะยังคงอยู่
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                variant="destructive"
-                className="w-full sm:w-auto"
-                onClick={() => setIsResetConfirmOpen(true)}
-                disabled={resetMutation.isPending}
-              >
-                {resetMutation.isPending ? (
-                  'กำลังรีเซ็ต...'
-                ) : (
-                  <>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    รีเซ็ตข้อมูลทั้งหมด
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
-
-      <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>คุณแน่ใจหรือไม่?</AlertDialogTitle>
-            <AlertDialogDescription>
-              การดำเนินการนี้ไม่สามารถย้อนกลับได้
-              ระบบจะลบข้อมูลการขาย, บิล, และประวัติสต็อกทั้งหมดอย่างถาวร
-              คุณต้องการดำเนินการต่อหรือไม่?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleResetData}
-              className="bg-destructive hover:bg-destructive/90"
-              disabled={resetMutation.isPending}
-            >
-              ยืนยันการรีเซ็ต
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
