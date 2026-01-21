@@ -29,7 +29,7 @@ router.get('/:id', requirePermission('VIEW_BILLS'), async (req, res) => {
     try {
         const { id } = req.params;
         const bill = await req.tenantPrisma!.bill.findUnique({
-            where: { id },
+            where: { id: id as string },
             include: {
                 items: { include: { product: true } },
                 user: true,
@@ -291,7 +291,7 @@ router.put('/:id/void', requirePermission('VOID_SALE'), async (req, res) => {
     try {
         const { id } = req.params;
         const bill = await req.tenantPrisma!.bill.update({
-            where: { id },
+            where: { id: id as string },
             data: { status: BillStatus.VOIDED },
             include: { items: true, user: true },
         });

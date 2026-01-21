@@ -71,7 +71,7 @@ router.post('/adjust', async (req, res) => {
         ]);
 
         // Send Flex Message for stock adjustment
-        const { smsService } = await import('../services/SmsService');
+        const { smsService } = await import('../services/SmsService.js');
         smsService.sendStockAdjustmentAlert(
             product.name,
             previousQuantity,

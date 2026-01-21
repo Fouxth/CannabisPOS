@@ -111,7 +111,7 @@ router.post('/restore', requirePermission('MANAGE_BACKUP'), async (req, res) => 
                         where: { id: category.id },
                         update: {
                             name: category.name,
-                            nameEn: category.nameEn,
+
                             slug: category.slug,
                             description: category.description,
                             color: category.color,
@@ -132,7 +132,7 @@ router.post('/restore', requirePermission('MANAGE_BACKUP'), async (req, res) => 
                         where: { id: product.id },
                         update: {
                             name: product.name,
-                            nameEn: product.nameEn,
+
                             description: product.description,
                             price: product.price,
                             cost: product.cost,
