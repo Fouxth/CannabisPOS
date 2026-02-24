@@ -25,6 +25,12 @@ interface POSState {
   globalDiscountType: 'percent' | 'amount';
   setGlobalDiscount: (amount: number, type: 'percent' | 'amount') => void;
 
+  // Surcharge (ส่วนต่าง)
+  globalSurcharge: number;
+  globalSurchargeType: 'percent' | 'amount';
+  getSurcharge: () => number;
+  setGlobalSurcharge: (amount: number, type: 'percent' | 'amount') => void;
+
   // Payment
   selectedPaymentMethod: string;
   setSelectedPaymentMethod: (method: string) => void;
@@ -87,7 +93,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   removeFromCart: (id) => {
     set({ cart: get().cart.filter((item) => item.id !== id) });
   },
-  clearCart: () => set({ cart: [], globalDiscount: 0, amountReceived: 0 }),
+  clearCart: () => set({ cart: [], globalDiscount: 0, globalSurcharge: 0, amountReceived: 0 }),
 
   calculateItemTotal: (item: CartItem) => {
     let itemTotal = 0;
@@ -122,24 +128,39 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ? subtotal * (globalDiscount / 100)
       : globalDiscount;
   },
+  getSurcharge: () => {
+    const { globalSurcharge, globalSurchargeType, getSubtotal, getDiscount } = get();
+    const subtotal = getSubtotal();
+    const discount = getDiscount();
+    const base = subtotal - discount;
+    return globalSurchargeType === 'percent'
+      ? base * (globalSurcharge / 100)
+      : globalSurcharge;
+  },
   getTax: () => {
-    const { vatEnabled, taxRate, getSubtotal, getDiscount } = get();
+    const { vatEnabled, taxRate, getSubtotal, getDiscount, getSurcharge } = get();
     if (!vatEnabled) return 0;
 
     const subtotal = getSubtotal();
     const discount = getDiscount();
-    return (subtotal - discount) * (taxRate / 100);
+    const surcharge = getSurcharge();
+    return (subtotal - discount + surcharge) * (taxRate / 100);
   },
   getTotal: () => {
     const subtotal = get().getSubtotal();
     const discount = get().getDiscount();
+    const surcharge = get().getSurcharge();
     const tax = get().getTax();
-    return subtotal - discount + tax;
+    return subtotal - discount + surcharge + tax;
   },
 
   globalDiscount: 0,
   globalDiscountType: 'percent',
   setGlobalDiscount: (amount, type) => set({ globalDiscount: amount, globalDiscountType: type }),
+
+  globalSurcharge: 0,
+  globalSurchargeType: 'percent',
+  setGlobalSurcharge: (amount, type) => set({ globalSurcharge: amount, globalSurchargeType: type }),
 
   selectedPaymentMethod: 'cash',
   setSelectedPaymentMethod: (method) => set({ selectedPaymentMethod: method }),

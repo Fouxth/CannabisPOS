@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft, Box, ShoppingCart } from 'lucide-react';
+import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft, Box, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +52,10 @@ export default function POS() {
     globalDiscount,
     globalDiscountType,
     setGlobalDiscount,
+    globalSurcharge,
+    globalSurchargeType,
+    getSurcharge,
+    setGlobalSurcharge,
     taxRate,
     setTaxRate,
     vatEnabled,
@@ -121,6 +125,7 @@ export default function POS() {
   // Calculate totals before useEffect that depends on them
   const subtotal = getSubtotal();
   const discount = getDiscount();
+  const surcharge = getSurcharge();
   const tax = getTax();
   const total = getTotal();
   const change = selectedPaymentMethod === 'cash' ? amountReceived - total : 0;
@@ -212,6 +217,8 @@ export default function POS() {
       subtotal,
       discountAmount: discount,
       discountPercent: globalDiscountType === 'percent' ? globalDiscount : 0,
+      surchargeAmount: surcharge,
+      surchargePercent: globalSurchargeType === 'percent' ? globalSurcharge : 0,
       taxAmount: tax,
       totalAmount: total,
       amountReceived: selectedPaymentMethod === 'cash' ? amountReceived : total,
@@ -234,6 +241,7 @@ export default function POS() {
       setAmountReceived(0);
       setSelectedPaymentMethod('cash');
       setGlobalDiscount(0, 'percent');
+      setGlobalSurcharge(0, 'percent');
       setShowBillDialog(true);
     } catch (error: any) {
       const message = error?.message || 'ชำระเงินไม่สำเร็จ กรุณาลองใหม่';
@@ -561,6 +569,12 @@ export default function POS() {
                 <span>-฿{formatCurrency(discount)}</span>
               </div>
             )}
+            {globalSurcharge > 0 && (
+              <div className="flex justify-between text-orange-500">
+                <span>ส่วนต่าง</span>
+                <span>+฿{formatCurrency(surcharge)}</span>
+              </div>
+            )}
             {vatEnabled && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">VAT {taxRate}%</span>
@@ -582,7 +596,7 @@ export default function POS() {
               disabled={cart.length === 0}
             >
               <Percent className="h-4 w-4 mr-2" />
-              ส่วนลด
+              ส่วนลด/ต่าง
             </Button>
             <Button
               className="flex-1 gradient-primary text-primary-foreground shadow-glow"
@@ -728,64 +742,72 @@ export default function POS() {
         </DialogContent>
       </Dialog>
 
-      {/* Discount Dialog */}
+      {/* Discount & Surcharge Dialog */}
       <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-display">ส่วนลด</DialogTitle>
+            <DialogTitle className="font-display">ส่วนลด / ส่วนต่าง</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setGlobalDiscount(5, 'percent')}
-                className={globalDiscount === 5 ? 'border-primary' : ''}
-              >
-                5%
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setGlobalDiscount(10, 'percent')}
-                className={globalDiscount === 10 ? 'border-primary' : ''}
-              >
-                10%
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setGlobalDiscount(15, 'percent')}
-                className={globalDiscount === 15 ? 'border-primary' : ''}
-              >
-                15%
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setGlobalDiscount(20, 'percent')}
-                className={globalDiscount === 20 ? 'border-primary' : ''}
-              >
-                20%
-              </Button>
+          <div className="space-y-5">
+            {/* ส่วนลด */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-destructive flex items-center gap-1"><Percent className="h-4 w-4" /> ส่วนลด</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[5, 10, 15, 20].map((v) => (
+                  <Button key={v} variant="outline" size="sm"
+                    className={globalDiscount === v ? 'border-destructive text-destructive' : ''}
+                    onClick={() => setGlobalDiscount(v, 'percent')}>
+                    {v}%
+                  </Button>
+                ))}
+              </div>
+              <div className="relative">
+                <Input type="number" placeholder="กรอกส่วนลด %"
+                  value={globalDiscount || ''}
+                  onChange={(e) => setGlobalDiscount(Number(e.target.value), 'percent')}
+                  className="pr-8" />
+                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+              {globalDiscount > 0 && (
+                <p className="text-xs text-destructive">ลด ฿{formatCurrency(discount)}</p>
+              )}
             </div>
 
-            <div className="relative">
-              <Input
-                type="number"
-                placeholder="กรอกส่วนลด %"
-                value={globalDiscount || ''}
-                onChange={(e) => setGlobalDiscount(Number(e.target.value), 'percent')}
-                className="pr-8"
-              />
-              <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="border-t" />
+
+            {/* ส่วนต่าง */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-orange-500 flex items-center gap-1"><TrendingUp className="h-4 w-4" /> ส่วนต่าง (บวกเพิ่ม)</p>
+              <div className="grid grid-cols-4 gap-2">
+                {[5, 10, 15, 20].map((v) => (
+                  <Button key={v} variant="outline" size="sm"
+                    className={globalSurcharge === v ? 'border-orange-500 text-orange-500' : ''}
+                    onClick={() => setGlobalSurcharge(v, 'percent')}>
+                    {v}%
+                  </Button>
+                ))}
+              </div>
+              <div className="relative">
+                <Input type="number" placeholder="กรอกส่วนต่าง %"
+                  value={globalSurcharge || ''}
+                  onChange={(e) => setGlobalSurcharge(Number(e.target.value), 'percent')}
+                  className="pr-8" />
+                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+              {globalSurcharge > 0 && (
+                <p className="text-xs text-orange-500">บวกเพิ่ม ฿{formatCurrency(surcharge)}</p>
+              )}
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setGlobalDiscount(0, 'percent'); setShowDiscountDialog(false); }}>
-              ยกเลิกส่วนลด
-            </Button>
-            <Button onClick={() => setShowDiscountDialog(false)}>
-              ตกลง
-            </Button>
+            <Button variant="outline" onClick={() => {
+              setGlobalDiscount(0, 'percent');
+              setGlobalSurcharge(0, 'percent');
+              setShowDiscountDialog(false);
+            }}>ล้างทั้งหมด</Button>
+            <Button onClick={() => setShowDiscountDialog(false)}>ตกลง</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

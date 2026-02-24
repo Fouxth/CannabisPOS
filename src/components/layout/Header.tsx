@@ -42,22 +42,26 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-3 sm:px-6">
       {/* Left: Menu Button (Mobile) & Date */}
       <div className="flex items-center gap-2 sm:gap-4">
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
+          className="lg:hidden h-8 w-8"
           onClick={onMenuClick}
         >
-          <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+          <Menu className="h-4 w-4" />
         </Button>
-        <div className="hidden sm:block">
-          <p className="text-xs sm:text-sm text-muted-foreground">
+        <div>
+          <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight hidden sm:block">
             {format(currentTime, 'EEEE d MMMM yyyy', { locale: th })}
           </p>
-          <p className="text-primary font-mono text-xs sm:text-sm font-medium">
+          {/* Mobile: show short date */}
+          <p className="text-[11px] text-muted-foreground leading-tight sm:hidden">
+            {format(currentTime, 'd MMM yyyy', { locale: th })}
+          </p>
+          <p className="text-primary font-mono text-xs sm:text-sm font-semibold leading-tight">
             {format(currentTime, 'HH:mm:ss')}
           </p>
         </div>
@@ -70,9 +74,12 @@ export function Header({ onMenuClick }: HeaderProps) {
           variant="ghost"
           size="icon"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="h-8 w-8 sm:h-9 sm:w-9"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
         >
-          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {theme === 'dark'
+            ? <Sun className="h-4 w-4 text-amber-400" />
+            : <Moon className="h-4 w-4" />
+          }
         </Button>
 
         {/* Notifications */}
@@ -81,16 +88,16 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-1 sm:gap-2 h-8 sm:h-9 px-1 sm:px-2">
-              <Avatar className="w-7 h-7 sm:w-8 sm:h-8">
+            <Button variant="ghost" className="flex items-center gap-1.5 h-8 sm:h-9 px-1.5 sm:px-2 hover:bg-accent/10">
+              <Avatar className="w-7 h-7 sm:w-8 sm:h-8 ring-2 ring-primary/20">
                 <AvatarImage src={user?.avatarUrl} alt={user?.nickname} />
-                <AvatarFallback className="bg-primary/20 text-primary font-bold text-[10px] sm:text-xs">
-                  {user?.nickname?.charAt(0) || 'U'}
+                <AvatarFallback className="bg-primary/15 text-primary font-bold text-[10px] sm:text-xs">
+                  {user?.nickname?.charAt(0)?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block text-left">
-                <p className="text-xs sm:text-sm font-medium leading-none">{user?.nickname}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">{user ? ROLE_NAMES[user.role] : ''}</p>
+                <p className="text-xs sm:text-sm font-semibold leading-tight">{user?.nickname}</p>
+                <p className="text-[10px] text-muted-foreground">{user ? ROLE_NAMES[user.role] : ''}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>
@@ -102,7 +109,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               โปรไฟล์
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout} className="text-destructive text-xs sm:text-sm">
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive text-xs sm:text-sm cursor-pointer">
               <LogOut className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
               ออกจากระบบ
             </DropdownMenuItem>
