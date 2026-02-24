@@ -246,10 +246,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateTenant: (id: string, data: { isActive: boolean }) =>
+  updateTenant: (id: string, data: { isActive?: boolean; name?: string; ownerName?: string; plan?: string; expiresAt?: string | null }) =>
     request<any>(`/management/tenants/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+  resetTenantPassword: (id: string, newPassword: string) =>
+    request<{ message: string; username: string }>(`/management/tenants/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    }),
+  broadcastAnnouncement: (data: { message: string; title?: string; tenantId?: string }) =>
+    request<{ message: string; recipients: number }>('/management/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  toggleTenantUser: (tenantId: string, userId: string, isActive: boolean) =>
+    request<any>(`/management/tenants/${tenantId}/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    }),
+  resetTenantUserPassword: (tenantId: string, userId: string, newPassword: string) =>
+    request<{ message: string }>(`/management/tenants/${tenantId}/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
     }),
   deleteTenant: (id: string) =>
     request<{ message: string }>(`/management/tenants/${id}`, {

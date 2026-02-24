@@ -3,6 +3,7 @@ import { managementPrisma } from '../lib/management-db';
 import { ProvisioningService } from '../services/ProvisioningService';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { socketService } from '../services/SocketService';
 
 const router = express.Router();
 
@@ -97,12 +98,19 @@ router.get('/tenants', async (req, res) => {
                         select: { createdAt: true },
                     });
 
+                    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                    const monthlyBills = await tenantPrisma.bill.aggregate({
+                        where: { status: 'COMPLETED', createdAt: { gte: thirtyDaysAgo } },
+                        _sum: { totalAmount: true },
+                    });
+
                     await tenantPrisma.$disconnect();
 
                     return {
                         ...tenant,
                         userCount,
                         lastActivity: lastBill?.createdAt || null,
+                        monthlyRevenue: Number(monthlyBills._sum.totalAmount || 0),
                     };
                 } catch (error) {
                     console.error(`Failed to enrich tenant ${tenant.id}:`, error);
@@ -443,16 +451,23 @@ router.post('/tenants', async (req, res) => {
 // PATCH /api/management/tenants/:id
 router.patch('/tenants/:id', async (req, res) => {
     const { id } = req.params;
-    const { isActive } = req.body;
+    const { isActive, name, ownerName, plan, expiresAt } = req.body;
 
-    if (typeof isActive !== 'boolean') {
-        return res.status(400).json({ message: 'isActive must be a boolean' });
+    if (typeof isActive !== 'boolean' && name === undefined && ownerName === undefined && plan === undefined && expiresAt === undefined) {
+        return res.status(400).json({ message: 'No valid fields provided' });
     }
 
     try {
+        const updateData: any = {};
+        if (typeof isActive === 'boolean') updateData.isActive = isActive;
+        if (name !== undefined) updateData.name = name;
+        if (ownerName !== undefined) updateData.ownerName = ownerName;
+        if (plan !== undefined) updateData.plan = plan;
+        if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+
         const tenant = await managementPrisma.tenant.update({
             where: { id },
-            data: { isActive },
+            data: updateData,
             include: { domains: true },
         });
         res.json(tenant);
@@ -551,6 +566,150 @@ router.get('/activity', async (req, res) => {
     } catch (error) {
         console.error('Failed to fetch activity:', error);
         res.status(500).json({ message: 'Failed to fetch activity' });
+    }
+});
+
+// POST /api/management/tenants/:id/reset-password
+router.post('/tenants/:id/reset-password', async (req, res) => {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        const tenant = await managementPrisma.tenant.findUnique({ where: { id } });
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        const ownerUser = await managementPrisma.user.findFirst({
+            where: { tenantId: id, role: 'OWNER' },
+        });
+
+        if (!ownerUser) return res.status(404).json({ message: 'Owner user not found' });
+
+        await managementPrisma.user.update({
+            where: { id: ownerUser.id },
+            data: { password: hashedPassword },
+        });
+
+        const tenantPrisma = await getTenantPrisma(id);
+        await tenantPrisma.user.update({
+            where: { id: ownerUser.id },
+            data: { password: hashedPassword },
+        });
+        await tenantPrisma.$disconnect();
+
+        res.json({ message: 'Password reset successfully', username: ownerUser.username });
+    } catch (error: any) {
+        console.error('Failed to reset password:', error);
+        res.status(500).json({ message: error.message || 'Failed to reset password' });
+    }
+});
+
+// POST /api/management/broadcast - Send announcement to one or all tenants
+router.post('/broadcast', async (req, res) => {
+    const { message, tenantId, title = 'Admin Announcement' } = req.body;
+
+    if (!message || !message.trim()) {
+        return res.status(400).json({ message: 'Message is required' });
+    }
+
+    try {
+        const payload = {
+            id: `announce_${Date.now()}`,
+            type: 'announcement',
+            title,
+            message,
+            createdAt: new Date().toISOString(),
+        };
+
+        if (tenantId) {
+            // Single tenant
+            socketService.sendNotification(tenantId, null, payload);
+            res.json({ message: 'Announcement sent to 1 shop', recipients: 1 });
+        } else {
+            // All active tenants
+            const activeTenants = await managementPrisma.tenant.findMany({
+                where: { isActive: true },
+                select: { id: true },
+            });
+            activeTenants.forEach(t => socketService.sendNotification(t.id, null, payload));
+            res.json({ message: `Announcement sent to ${activeTenants.length} shops`, recipients: activeTenants.length });
+        }
+    } catch (error: any) {
+        console.error('Failed to broadcast:', error);
+        res.status(500).json({ message: error.message || 'Failed to broadcast' });
+    }
+});
+
+// PATCH /api/management/tenants/:tenantId/users/:userId - toggle user active
+router.patch('/tenants/:tenantId/users/:userId', async (req, res) => {
+    const { tenantId, userId } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: 'isActive must be a boolean' });
+    }
+
+    try {
+        const tenant = await managementPrisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        // Update in management DB (if user exists there)
+        await managementPrisma.user.updateMany({
+            where: { id: userId, tenantId },
+            data: { isActive },
+        });
+
+        // Update in tenant DB
+        const tenantPrisma = await getTenantPrisma(tenantId);
+        await tenantPrisma.user.update({
+            where: { id: userId },
+            data: { isActive },
+        });
+        await tenantPrisma.$disconnect();
+
+        res.json({ message: `User ${isActive ? 'activated' : 'deactivated'} successfully` });
+    } catch (error: any) {
+        console.error('Failed to toggle user:', error);
+        res.status(500).json({ message: error.message || 'Failed to toggle user' });
+    }
+});
+
+// POST /api/management/tenants/:tenantId/users/:userId/reset-password
+router.post('/tenants/:tenantId/users/:userId/reset-password', async (req, res) => {
+    const { tenantId, userId } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    try {
+        const tenant = await managementPrisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        await managementPrisma.user.updateMany({
+            where: { id: userId, tenantId },
+            data: { password: hashedPassword },
+        });
+
+        const tenantPrisma = await getTenantPrisma(tenantId);
+        await tenantPrisma.user.update({
+            where: { id: userId },
+            data: { password: hashedPassword },
+        });
+        await tenantPrisma.$disconnect();
+
+        res.json({ message: 'Password reset successfully' });
+    } catch (error: any) {
+        console.error('Failed to reset user password:', error);
+        res.status(500).json({ message: error.message || 'Failed to reset user password' });
     }
 });
 

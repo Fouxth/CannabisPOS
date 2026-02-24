@@ -2,11 +2,23 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, Users, Mail, Phone, Calendar, Shield } from 'lucide-react';
+import {
+    Loader2, ArrowLeft, Users, Mail, Phone, Calendar, Shield,
+    MoreHorizontal, KeyRound, Power, Eye, EyeOff,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+    DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter,
+    DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { ROLE_NAMES, ROLE_COLORS } from '@/hooks/useAuth';
 
 interface TenantUser {
@@ -28,10 +40,13 @@ export default function TenantUsers() {
     const [users, setUsers] = useState<TenantUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [tenantName, setTenantName] = useState('');
+    const [resetTarget, setResetTarget] = useState<TenantUser | null>(null);
+    const [newPassword, setNewPassword] = useState('');
+    const [showPwd, setShowPwd] = useState(false);
+    const [resetLoading, setResetLoading] = useState(false);
 
     const fetchData = async () => {
         if (!id) return;
-
         try {
             const [usersData, tenantData] = await Promise.all([
                 api.getTenantUsers(id),
@@ -50,6 +65,35 @@ export default function TenantUsers() {
     useEffect(() => {
         fetchData();
     }, [id]);
+
+    const handleToggle = async (user: TenantUser) => {
+        try {
+            await api.toggleTenantUser(id!, user.id, !user.isActive);
+            toast.success(`${user.fullName} ${!user.isActive ? 'activated' : 'deactivated'}`);
+            fetchData();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to update user');
+        }
+    };
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!resetTarget || newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+        setResetLoading(true);
+        try {
+            await api.resetTenantUserPassword(id!, resetTarget.id, newPassword);
+            toast.success(`Password for ${resetTarget.fullName} reset successfully`);
+            setResetTarget(null);
+            setNewPassword('');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to reset password');
+        } finally {
+            setResetLoading(false);
+        }
+    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('th-TH', {
@@ -75,13 +119,11 @@ export default function TenantUsers() {
         return formatDate(dateString);
     };
 
-    const getRoleBadgeColor = (role: string) => {
-        return ROLE_COLORS[role as keyof typeof ROLE_COLORS] || 'bg-gray-500';
-    };
+    const getRoleBadgeColor = (role: string) =>
+        ROLE_COLORS[role as keyof typeof ROLE_COLORS] || 'bg-gray-500';
 
-    const getRoleName = (role: string) => {
-        return ROLE_NAMES[role as keyof typeof ROLE_NAMES] || role;
-    };
+    const getRoleName = (role: string) =>
+        ROLE_NAMES[role as keyof typeof ROLE_NAMES] || role;
 
     if (loading) {
         return (
@@ -164,16 +206,17 @@ export default function TenantUsers() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Employee</TableHead>
-                                    <TableHead>Contact</TableHead>
+                                    <TableHead className="hidden sm:table-cell">Contact</TableHead>
                                     <TableHead>Role</TableHead>
-                                    <TableHead>Last Login</TableHead>
+                                    <TableHead className="hidden md:table-cell">Last Login</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead>Joined</TableHead>
+                                    <TableHead className="hidden md:table-cell">Joined</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -192,12 +235,14 @@ export default function TenantUsers() {
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             <div className="space-y-1">
-                                                <div className="flex items-center gap-1 text-sm">
-                                                    <Mail className="h-3 w-3 text-muted-foreground" />
-                                                    {user.email}
-                                                </div>
+                                                {user.email && (
+                                                    <div className="flex items-center gap-1 text-sm">
+                                                        <Mail className="h-3 w-3 text-muted-foreground" />
+                                                        {user.email}
+                                                    </div>
+                                                )}
                                                 {user.phone && (
                                                     <div className="flex items-center gap-1 text-sm">
                                                         <Phone className="h-3 w-3 text-muted-foreground" />
@@ -211,7 +256,7 @@ export default function TenantUsers() {
                                                 {getRoleName(user.role)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             {user.lastLoginAt ? (
                                                 <div className="text-sm">
                                                     {formatRelativeTime(user.lastLoginAt)}
@@ -225,17 +270,42 @@ export default function TenantUsers() {
                                                 {user.isActive ? 'Active' : 'Inactive'}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             <div className="flex items-center gap-1 text-sm">
                                                 <Calendar className="h-3 w-3 text-muted-foreground" />
                                                 {formatDate(user.createdAt)}
                                             </div>
                                         </TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleToggle(user)}
+                                                        className={user.isActive ? 'text-orange-600' : 'text-green-600'}
+                                                    >
+                                                        <Power className="mr-2 h-4 w-4" />
+                                                        {user.isActive ? 'Deactivate' : 'Activate'}
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem
+                                                        onClick={() => { setResetTarget(user); setNewPassword(''); setShowPwd(false); }}
+                                                    >
+                                                        <KeyRound className="mr-2 h-4 w-4" />
+                                                        Reset Password
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                                 {users.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                             No users found
                                         </TableCell>
                                     </TableRow>
@@ -245,6 +315,54 @@ export default function TenantUsers() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Reset Password Dialog */}
+            <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) setResetTarget(null); }}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5" />
+                            Reset Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            Reset password for <strong>{resetTarget?.fullName}</strong> ({resetTarget?.role})
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleResetPassword}>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">New Password</label>
+                                <div className="relative">
+                                    <Input
+                                        type={showPwd ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="At least 6 characters"
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setShowPwd(!showPwd)}
+                                    >
+                                        {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setResetTarget(null)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={resetLoading || newPassword.length < 6}>
+                                {resetLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resetting...</> : 'Reset Password'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+

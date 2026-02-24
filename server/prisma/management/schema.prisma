@@ -16,6 +16,8 @@ model Tenant {
   dbName      String   @unique // e.g. "pos_tenant_123"
   dbUrl       String   // Full connection string
   ownerName   String?  // Shop owner's name
+  plan        String   @default("free") // free, pro, enterprise
+  expiresAt   DateTime? // null = no expiry
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

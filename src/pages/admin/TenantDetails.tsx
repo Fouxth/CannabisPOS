@@ -2,13 +2,18 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import {
     Loader2, ArrowLeft, Store, Users, Package, TrendingUp,
-    ShoppingCart, Calendar, Globe, Database, Trash2, Settings
+    ShoppingCart, Calendar, Globe, Database, Trash2, Settings, KeyRound, Eye, EyeOff
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+    Dialog, DialogContent, DialogDescription, DialogFooter,
+    DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -21,6 +26,8 @@ interface TenantDetails {
     isActive: boolean;
     createdAt: string;
     domains: Array<{ domain: string }>;
+    plan?: string;
+    expiresAt?: string | null;
     metrics: {
         userCount: number;
         productCount: number;
@@ -46,6 +53,10 @@ export default function TenantDetails() {
     const [stats, setStats] = useState<TenantStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [statsPeriod, setStatsPeriod] = useState(30);
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const fetchData = async () => {
         if (!id) return;
@@ -82,6 +93,25 @@ export default function TenantDetails() {
             navigate('/admin');
         } catch (error: any) {
             toast.error(error.message || 'Failed to delete tenant');
+        }
+    };
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!tenant || newPassword.length < 6) {
+            toast.error('Password must be at least 6 characters');
+            return;
+        }
+        setResetting(true);
+        try {
+            const result = await api.resetTenantPassword(tenant.id, newPassword);
+            toast.success(`Password for ${result.username} reset successfully`);
+            setResetDialogOpen(false);
+            setNewPassword('');
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to reset password');
+        } finally {
+            setResetting(false);
         }
     };
 
@@ -126,6 +156,24 @@ export default function TenantDetails() {
                             <Badge variant={tenant.isActive ? 'default' : 'secondary'}>
                                 {tenant.isActive ? 'Active' : 'Inactive'}
                             </Badge>
+                            <Badge variant="outline" className={{
+                                enterprise: 'border-purple-400 text-purple-600',
+                                pro: 'border-blue-400 text-blue-600',
+                                free: 'border-gray-300 text-gray-500',
+                            }[tenant.plan || 'free'] || 'border-gray-300 text-gray-500'}>
+                                {(tenant.plan || 'FREE').toUpperCase()}
+                            </Badge>
+                            {tenant.expiresAt && (
+                                <span className={`text-xs font-medium ${
+                                    new Date(tenant.expiresAt) < new Date()
+                                        ? 'text-red-500'
+                                        : new Date(tenant.expiresAt) < new Date(Date.now() + 7 * 86400000)
+                                        ? 'text-orange-500'
+                                        : 'text-muted-foreground'
+                                }`}>
+                                    {new Date(tenant.expiresAt) < new Date() ? '⚠️ Expired' : `Exp: ${new Date(tenant.expiresAt).toLocaleDateString('th-TH')}`}
+                                </span>
+                            )}
                         </div>
                         <p className="text-muted-foreground">Created on {formatDate(tenant.createdAt)}</p>
                     </div>
@@ -137,6 +185,13 @@ export default function TenantDetails() {
                     >
                         <Users className="mr-2 h-4 w-4" />
                         Manage Users
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => { setNewPassword(''); setResetDialogOpen(true); }}
+                    >
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Reset Password
                     </Button>
                     <Button variant="destructive" onClick={handleDelete}>
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -353,6 +408,53 @@ export default function TenantDetails() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Reset Password Dialog */}
+            <Dialog open={resetDialogOpen} onOpenChange={(open) => { setResetDialogOpen(open); if (!open) setNewPassword(''); }}>
+                <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5" />
+                            Reset Owner Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            This resets the password for the shop owner account (<strong>{tenant?.slug && `admin@${tenant.slug}`}</strong>).
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleResetPassword}>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">New Password</label>
+                                <div className="relative">
+                                    <Input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        placeholder="At least 6 characters"
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button" variant="outline" onClick={() => setResetDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={resetting || newPassword.length < 6}>
+                                {resetting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Resetting...</> : 'Reset Password'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
