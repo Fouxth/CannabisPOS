@@ -262,27 +262,10 @@ export default function POS() {
     );
   }
 
+  const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] gap-6 animate-fade-in">
-      {/* Mobile Cart Bottom Bar */}
-      {cart.length > 0 && mobileTab === 'products' && (
-        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <Button
-            className="w-full h-14 shadow-xl flex items-center justify-between px-6 rounded-2xl bg-primary text-primary-foreground"
-            onClick={() => setMobileTab('cart')}
-          >
-            <div className="flex items-center gap-2">
-              <div className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-medium">
-                {cart.reduce((acc, item) => acc + item.quantity, 0)} รายการ
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg">฿{formatCurrency(total)}</span>
-              <ShoppingCart className="h-5 w-5 ml-2" />
-            </div>
-          </Button>
-        </div>
-      )}
 
       {/* Products Section */}
       <div className={cn(
@@ -319,7 +302,7 @@ export default function POS() {
         </ScrollArea>
 
         {/* Search & View */}
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -329,24 +312,18 @@ export default function POS() {
               className="pl-10"
             />
           </div>
-          {/* <div className="flex items-center gap-1 rounded-lg border p-1">
-            <Button
-              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewMode('grid')}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div> */}
+          {/* Mobile cart icon button */}
+          <button
+            onClick={() => setMobileTab('cart')}
+            className="lg:hidden relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-primary-foreground shadow-md flex-shrink-0 active:scale-95 transition-transform"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {cartItemCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center">
+                {cartItemCount > 99 ? '99+' : cartItemCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Products Grid/List */}
@@ -459,24 +436,34 @@ export default function POS() {
         </ScrollArea>
       </div>
 
-      {/* Cart Section */}
+      {/* Cart Section — full-screen overlay on mobile, sidebar on desktop */}
       <Card className={cn(
         "flex flex-col glass transition-all duration-300",
-        "w-full lg:w-80 xl:w-96", // Mobile: w-full, Tablet: w-80, Desktop: w-96
-        mobileTab === 'products' ? "hidden lg:flex" : "flex"
+        "lg:w-80 xl:w-96",
+        // Mobile: fixed full-screen overlay
+        mobileTab === 'products'
+          ? "hidden lg:flex"
+          : "flex fixed inset-0 z-40 rounded-none lg:relative lg:inset-auto lg:rounded-lg lg:z-auto"
       )}>
         <CardHeader className="pb-3 border-b mb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              {/* Mobile back button */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden -ml-2 h-8 w-8"
+                className="lg:hidden -ml-1 h-8 w-8"
                 onClick={() => setMobileTab('products')}
               >
                 <ArrowRightLeft className="h-4 w-4 rotate-180" />
               </Button>
               <CardTitle className="font-display text-lg">ตะกร้าสินค้า</CardTitle>
+              {/* Mobile item count */}
+              {cartItemCount > 0 && (
+                <span className="lg:hidden text-xs font-medium text-muted-foreground">
+                  ({cartItemCount} รายการ)
+                </span>
+              )}
             </div>
             {cart.length > 0 && (
               <Button variant="ghost" size="sm" onClick={clearCart} className="text-destructive h-8 px-2">
@@ -778,25 +765,67 @@ export default function POS() {
 
             {/* ส่วนต่าง */}
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-orange-500 flex items-center gap-1"><TrendingUp className="h-4 w-4" /> ส่วนต่าง (บวกเพิ่ม)</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[5, 10, 15, 20].map((v) => (
-                  <Button key={v} variant="outline" size="sm"
-                    className={globalSurcharge === v ? 'border-orange-500 text-orange-500' : ''}
-                    onClick={() => setGlobalSurcharge(v, 'percent')}>
-                    {v}%
-                  </Button>
-                ))}
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-orange-500 flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4" /> ส่วนต่าง (บวกเพิ่ม)
+                </p>
+                {/* Toggle % / ฿ */}
+                <div className="flex rounded-lg border border-orange-300 overflow-hidden text-xs">
+                  <button
+                    className={`px-2.5 py-1 transition-colors ${globalSurchargeType === 'percent' ? 'bg-orange-500 text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                    onClick={() => setGlobalSurcharge(globalSurcharge, 'percent')}
+                  >%</button>
+                  <button
+                    className={`px-2.5 py-1 transition-colors ${globalSurchargeType === 'amount' ? 'bg-orange-500 text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                    onClick={() => setGlobalSurcharge(globalSurcharge, 'amount')}
+                  >฿</button>
+                </div>
               </div>
-              <div className="relative">
-                <Input type="number" placeholder="กรอกส่วนต่าง %"
-                  value={globalSurcharge || ''}
-                  onChange={(e) => setGlobalSurcharge(Number(e.target.value), 'percent')}
-                  className="pr-8" />
-                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              </div>
+
+              {globalSurchargeType === 'percent' ? (
+                <>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[5, 10, 15, 20].map((v) => (
+                      <Button key={v} variant="outline" size="sm"
+                        className={globalSurcharge === v ? 'border-orange-500 text-orange-500' : ''}
+                        onClick={() => setGlobalSurcharge(v, 'percent')}>
+                        {v}%
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <Input type="number" placeholder="กรอกส่วนต่าง %"
+                      value={globalSurcharge || ''}
+                      onChange={(e) => setGlobalSurcharge(Number(e.target.value), 'percent')}
+                      className="pr-8" />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[20, 50, 100, 200].map((v) => (
+                      <Button key={v} variant="outline" size="sm"
+                        className={globalSurcharge === v ? 'border-orange-500 text-orange-500' : ''}
+                        onClick={() => setGlobalSurcharge(v, 'amount')}>
+                        ฿{v}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">฿</span>
+                    <Input type="number" placeholder="กรอกจำนวนเงิน"
+                      value={globalSurcharge || ''}
+                      onChange={(e) => setGlobalSurcharge(Number(e.target.value), 'amount')}
+                      className="pl-7" />
+                  </div>
+                </>
+              )}
+
               {globalSurcharge > 0 && (
-                <p className="text-xs text-orange-500">บวกเพิ่ม ฿{formatCurrency(surcharge)}</p>
+                <p className="text-xs text-orange-500">
+                  บวกเพิ่ม ฿{formatCurrency(surcharge)}
+                </p>
               )}
             </div>
           </div>
