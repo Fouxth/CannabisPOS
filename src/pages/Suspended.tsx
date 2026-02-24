@@ -12,20 +12,20 @@ export default function Suspended() {
         const checkStatus = async () => {
             try {
                 const token = localStorage.getItem('auth_token');
-                if (!token) return; // No token, stay locked
+                if (!token) return; // Token gone = cannot identify tenant, stay locked
 
                 const response = await fetch(`${API_BASE_URL}/auth/tenant-status`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${token}` },
                 });
 
-                if (!response.ok) return; // Server error or invalid token — stay locked
+                if (!response.ok) return; // Server error — stay locked
 
                 const data = await response.json();
 
                 // Only unlock when management DB explicitly says active: true
                 if (data.active === true) {
                     setIsRestored(true);
-                    logout();
+                    logout(); // This removes the token and clears auth state
                     setTimeout(() => {
                         window.location.href = '/login';
                     }, 3000);
@@ -35,7 +35,9 @@ export default function Suspended() {
             }
         };
 
-        const interval = setInterval(checkStatus, 5000); // Check every 5 seconds
+        // Run immediately on mount, then every 10 seconds
+        checkStatus();
+        const interval = setInterval(checkStatus, 10000);
         return () => clearInterval(interval);
     }, [logout]);
 

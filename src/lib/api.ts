@@ -55,7 +55,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       (response.status === 404 && text.includes('Tenant not found or inactive')) ||
       (response.status === 403 && text.includes('Shop is inactive'))
     ) {
-      removeAuthToken();
+      // Do NOT remove token here — Suspended page needs it to poll tenant status
       window.location.href = '/suspended';
       throw new Error('ร้านค้านี้ถูกปิดใช้งานชั่วคราว');
     }

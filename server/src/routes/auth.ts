@@ -141,16 +141,14 @@ router.post('/line-webhook', async (req, res) => {
 });
 
 // Tenant status check — used by Suspended page to poll if shop has been re-activated
-// Accepts JWT token, verifies it, then checks management DB for tenant.isActive
+// Public endpoint: uses JWT token to identify tenant, checks management DB directly
 router.get('/tenant-status', async (req, res) => {
     try {
         const authHeader = req.headers['authorization'];
-        if (!authHeader) return res.status(401).json({ active: false, reason: 'no_token' });
+        if (!authHeader) return res.status(400).json({ active: false, reason: 'no_token' });
 
-        const token = authHeader.replace('Bearer ', '');
-        const decoded = verifyToken(token);
-
-        if (!decoded) return res.status(401).json({ active: false, reason: 'invalid_token' });
+        const decoded = verifyToken(authHeader.replace('Bearer ', ''));
+        if (!decoded) return res.status(400).json({ active: false, reason: 'invalid_token' });
 
         // SUPER_ADMIN has no tenantId — always active
         if (!decoded.tenantId) return res.json({ active: true });
