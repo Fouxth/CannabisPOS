@@ -210,15 +210,16 @@ export default function Products() {
       {/* Products Table */}
       <Card className="glass">
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>สินค้า</TableHead>
-                <TableHead>หมวดหมู่</TableHead>
+                <TableHead className="hidden sm:table-cell">หมวดหมู่</TableHead>
                 <TableHead className="text-right">ราคา</TableHead>
-                <TableHead className="text-right">ต้นทุน</TableHead>
+                <TableHead className="text-right hidden md:table-cell">ต้นทุน</TableHead>
                 <TableHead className="text-right">สต็อก</TableHead>
-                <TableHead>สถานะ</TableHead>
+                <TableHead className="hidden md:table-cell">สถานะ</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -238,7 +239,7 @@ export default function Products() {
                         <p className="font-medium">{product.name}</p>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {category && (
                         <Badge
                           variant="secondary"
@@ -251,7 +252,7 @@ export default function Products() {
                     <TableCell className="text-right font-medium">
                       ฿{formatCurrency(product.price)}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
+                    <TableCell className="text-right text-muted-foreground hidden md:table-cell">
                       ฿{formatCurrency(product.cost)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -262,7 +263,7 @@ export default function Products() {
                         {product.stockUnit}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant={product.isActive ? 'default' : 'secondary'}>
                         {product.isActive ? 'ใช้งาน' : 'ปิดใช้งาน'}
                       </Badge>
@@ -299,6 +300,7 @@ export default function Products() {
               })}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -472,7 +472,7 @@ export default function Reports() {
                                 <CardTitle>แนวโน้มยอดขาย</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ResponsiveContainer width="100%" height={220}>
                                     <LineChart data={reportsData.monthlyBreakdown || []}>
                                         <CartesianGrid strokeDasharray="3 3" />
                                         <XAxis dataKey="month" />
@@ -492,7 +492,7 @@ export default function Reports() {
                                 <CardTitle>สัดส่วนยอดขายตามหมวดหมู่</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ResponsiveContainer width="100%" height={300}>
+                                <ResponsiveContainer width="100%" height={220}>
                                     <PieChart>
                                         <Pie
                                             data={reportsData.categoryBreakdown || []}
@@ -521,6 +521,7 @@ export default function Reports() {
                             <CardTitle>สินค้าขายดี</CardTitle>
                         </CardHeader>
                         <CardContent>
+                            <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -541,6 +542,7 @@ export default function Reports() {
                                     ))}
                                 </TableBody>
                             </Table>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -643,15 +645,15 @@ export default function Reports() {
                             <CardTitle>รายละเอียดการเคลื่อนไหวทางการเงิน</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                            <div className="max-h-[350px] sm:max-h-[500px] overflow-auto custom-scrollbar">
                                 <Table>
                                     <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                                         <TableRow>
                                             <TableHead>วันที่</TableHead>
                                             <TableHead>รายละเอียด</TableHead>
-                                            <TableHead>หมวดหมู่</TableHead>
+                                            <TableHead className="hidden sm:table-cell">หมวดหมู่</TableHead>
                                             <TableHead className="text-right">จำนวนเงิน</TableHead>
-                                            <TableHead>ผู้บันทึก</TableHead>
+                                            <TableHead className="hidden md:table-cell">ผู้บันทึก</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -665,7 +667,7 @@ export default function Reports() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>{transaction.details}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
                                                         <Badge variant="secondary">{transaction.category}</Badge>
                                                     </TableCell>
                                                     <TableCell className="text-right font-medium">
@@ -673,7 +675,7 @@ export default function Reports() {
                                                             {transaction.type === 'income' ? '+' : '-'}฿{formatCurrency(transaction.amount)}
                                                         </span>
                                                     </TableCell>
-                                                    <TableCell className="text-muted-foreground">
+                                                    <TableCell className="text-muted-foreground hidden md:table-cell">
                                                         <div className="flex items-center gap-2">
                                                             <Users className="h-4 w-4" />
                                                             {transaction.recorder}

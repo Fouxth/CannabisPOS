@@ -228,10 +228,10 @@ export default function Promotions() {
     };
 
     return (
-        <div className="container mx-auto py-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold">โปรโมชั่น</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold font-display">โปรโมชั่น</h1>
                     <p className="text-muted-foreground">จัดการโปรโมชั่นและส่วนลด</p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={(open) => {
@@ -244,14 +244,14 @@ export default function Promotions() {
                             สร้างโปรโมชั่น
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[600px]">
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingPromotion ? 'แก้ไขโปรโมชั่น' : 'สร้างโปรโมชั่นใหม่'}</DialogTitle>
                             <DialogDescription>กรอกข้อมูลโปรโมชั่น</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit}>
                             <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="name">ชื่อโปรโมชั่น *</Label>
                                         <Input
@@ -279,7 +279,7 @@ export default function Promotions() {
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="type">ประเภท *</Label>
                                         <Select
@@ -307,7 +307,7 @@ export default function Promotions() {
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="minPurchase">ยอดซื้อขั้นต่ำ (฿)</Label>
                                         <Input
@@ -327,7 +327,7 @@ export default function Promotions() {
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="startDate">วันเริ่มต้น *</Label>
                                         <Input
@@ -384,14 +384,15 @@ export default function Promotions() {
                     ) : promotions.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">ยังไม่มีโปรโมชั่น</div>
                     ) : (
+                        <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>ชื่อ</TableHead>
                                     <TableHead>ประเภท</TableHead>
                                     <TableHead>มูลค่า</TableHead>
-                                    <TableHead>รหัส</TableHead>
-                                    <TableHead>การใช้งาน</TableHead>
+                                    <TableHead className="hidden sm:table-cell">รหัส</TableHead>
+                                    <TableHead className="hidden md:table-cell">การใช้งาน</TableHead>
                                     <TableHead>สถานะ</TableHead>
                                     <TableHead className="text-right">จัดการ</TableHead>
                                 </TableRow>
@@ -409,12 +410,12 @@ export default function Promotions() {
                                         <TableCell>
                                             {promo.type === 'percentage' ? `${promo.value}%` : `฿${promo.value.toLocaleString()}`}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden sm:table-cell">
                                             {promo.code ? (
                                                 <code className="bg-muted px-2 py-1 rounded">{promo.code}</code>
                                             ) : '-'}
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="hidden md:table-cell">
                                             {promo.usageCount}{promo.usageLimit ? `/${promo.usageLimit}` : ''} ครั้ง
                                         </TableCell>
                                         <TableCell>
@@ -442,6 +443,7 @@ export default function Promotions() {
                                 ))}
                             </TableBody>
                         </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

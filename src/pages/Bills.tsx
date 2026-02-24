@@ -164,7 +164,7 @@ export default function Bills() {
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold font-display">บิล</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold font-display">บิล</h1>
                 <p className="text-muted-foreground">ประวัติบิลทั้งหมด</p>
             </div>
 
@@ -261,7 +261,7 @@ export default function Bills() {
                             {searchQuery && <p className="text-sm">ลองค้นหาด้วยคำอื่น</p>}
                         </div>
                     ) : (
-                        <ScrollArea className="h-[600px]">
+                        <ScrollArea className="h-[400px] sm:h-[600px]">
                             <div className="space-y-3">
                                 {filteredBills.map((bill, index) => {
                                     const PaymentIcon = paymentIcons[bill.paymentMethod] || Banknote;

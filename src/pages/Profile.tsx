@@ -79,7 +79,7 @@ export default function Profile() {
     };
 
     return (
-        <div className="space-y-6 p-6 pb-16 md:block">
+        <div className="space-y-6 animate-fade-in">
             <div className="space-y-0.5">
                 <h2 className="text-2xl font-bold tracking-tight">โปรไฟล์</h2>
                 <p className="text-muted-foreground">
@@ -89,7 +89,7 @@ export default function Profile() {
             <Separator className="my-6" />
 
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
-                <aside className="-mx-4 lg:w-1/5">
+                <aside className="lg:w-1/5">
                     <nav className="flex space-x-2 lg:flex-col lg:space-x-0 lg:space-y-1">
                         <Button
                             variant="ghost"
@@ -122,8 +122,8 @@ export default function Profile() {
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleProfileSubmit} className="space-y-6">
-                                    <div className="flex items-center gap-6">
-                                        <Avatar className="h-24 w-24">
+                                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                                        <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                                             <AvatarImage src={formData.avatarUrl} />
                                             <AvatarFallback className="text-lg">{user?.fullName?.charAt(0)}</AvatarFallback>
                                         </Avatar>

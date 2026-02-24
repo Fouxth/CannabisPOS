@@ -60,10 +60,10 @@ export default function Notifications() {
     }
 
     return (
-        <div className="space-y-6 p-6 pb-16 md:block">
+        <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col space-y-8 lg:flex-row lg:space-x-12 lg:space-y-0">
                 <div className="flex-1 lg:max-w-4xl mx-auto w-full">
-                    <div className="flex items-center justify-between space-y-2 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight">การแจ้งเตือน</h2>
                             <p className="text-muted-foreground">
@@ -87,7 +87,7 @@ export default function Notifications() {
                         <TabsContent value="all" className="space-y-4">
                             <Card>
                                 <CardContent className="p-0">
-                                    <ScrollArea className="h-[600px]">
+                                    <ScrollArea className="h-[400px] sm:h-[600px]">
                                         {filteredNotifications.length > 0 ? (
                                             <div className="divide-y">
                                                 {filteredNotifications.map((notification) => (
@@ -154,7 +154,7 @@ export default function Notifications() {
                             {/* Same content structure but filtered (handled by state) */}
                             <Card>
                                 <CardContent className="p-0">
-                                    <ScrollArea className="h-[600px]">
+                                    <ScrollArea className="h-[400px] sm:h-[600px]">
                                         {filteredNotifications.length > 0 ? (
                                             <div className="divide-y">
                                                 {filteredNotifications.map((notification) => (

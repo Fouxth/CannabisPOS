@@ -287,7 +287,7 @@ export default function Users() {
                 <Input id="nickname" name="nickname" defaultValue={editingUser?.nickname} placeholder="กรอกชื่อเล่น" required />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="username">ชื่อผู้ใช้ *</Label>
                   <Input id="username" name="username" type="text" defaultValue={editingUser?.username} placeholder="username" required />

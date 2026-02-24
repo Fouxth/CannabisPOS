@@ -120,9 +120,9 @@ export default function Dashboard() {
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => stat.clickable && setShowSalesDetail(true)}
           >
-            <CardContent className="p-6">
+            <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div className={`rounded-xl p-3 bg-${stat.color}/10`}>
+                <div className={`rounded-xl p-2.5 sm:p-3 bg-${stat.color}/10`}>
                   <stat.icon className={`h-5 w-5 text-${stat.color}`} />
                 </div>
                 <Badge
@@ -240,7 +240,7 @@ export default function Dashboard() {
             <CardDescription>แสดงยอดขายและจำนวนรายการในแต่ละชั่วโมง</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[220px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dashboard.salesByHour}>
                   <defs>
@@ -290,7 +290,7 @@ export default function Dashboard() {
             <CardDescription>5 อันดับสินค้าที่ขายได้มากที่สุดวันนี้</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
+            <div className="h-[220px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={dashboard.topProducts}

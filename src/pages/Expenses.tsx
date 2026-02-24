@@ -222,14 +222,15 @@ export default function Expenses() {
             {/* Expenses Table */}
             <Card className="glass">
                 <CardContent className="p-0">
+                    <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>วันที่</TableHead>
                                 <TableHead>รายละเอียด</TableHead>
-                                <TableHead>หมวดหมู่</TableHead>
+                                <TableHead className="hidden sm:table-cell">หมวดหมู่</TableHead>
                                 <TableHead className="text-right">จำนวนเงิน</TableHead>
-                                <TableHead>ผู้บันทึก</TableHead>
+                                <TableHead className="hidden md:table-cell">ผู้บันทึก</TableHead>
                                 <TableHead className="w-[50px]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -264,7 +265,7 @@ export default function Expenses() {
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="hidden sm:table-cell">
                                                 {category && (
                                                     <Badge
                                                         variant="secondary"
@@ -277,7 +278,7 @@ export default function Expenses() {
                                             <TableCell className="text-right font-medium text-rose-600">
                                                 -฿{formatCurrency(expense.amount)}
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground">
+                                            <TableCell className="text-muted-foreground hidden md:table-cell">
                                                 {expense.user?.fullName || 'ไม่ระบุ'}
                                             </TableCell>
                                             <TableCell>
@@ -304,6 +305,7 @@ export default function Expenses() {
                             )}
                         </TableBody>
                     </Table>
+                    </div>
                 </CardContent>
             </Card>
 

@@ -236,6 +236,7 @@ export default function Stock() {
           {/* Stock Table */}
           <Card className="glass">
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -319,6 +320,7 @@ export default function Stock() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

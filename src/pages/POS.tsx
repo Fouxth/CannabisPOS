@@ -265,7 +265,7 @@ export default function POS() {
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] gap-6 animate-fade-in">
+    <div className="flex h-[calc(100dvh-10rem)] lg:h-[calc(100vh-7rem)] gap-6 animate-fade-in overflow-hidden">
 
       {/* Products Section */}
       <div className={cn(
@@ -355,13 +355,13 @@ export default function POS() {
                 >
                   {viewMode === 'grid' ? (
                     <>
-                      <CardContent className="p-4 h-full flex flex-col items-center text-center justify-between">
+                      <CardContent className="p-3 sm:p-4 h-full flex flex-col items-center text-center justify-between">
                         <div className="w-full">
                           {/* Name */}
-                          <p className="font-semibold text-lg line-clamp-1 mb-2">{product.name}</p>
+                          <p className="font-semibold text-sm sm:text-lg line-clamp-1 mb-1 sm:mb-2">{product.name}</p>
 
                           {/* Category and Badges */}
-                          <div className="flex flex-wrap justify-center gap-2 mb-3">
+                          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
                             {category && (
                               <div
                                 className="px-3 py-0.5 rounded-full text-[12px] border font-medium transition-colors"
@@ -384,10 +384,10 @@ export default function POS() {
 
                         {/* Price */}
                         <div className="w-full py-1">
-                          <div className="bg-primary/10 border border-primary/20 rounded-xl py-2 px-4 mb-2 inline-block w-full max-w-[180px]">
-                            <p className="text-xl font-bold text-primary">
+                          <div className="bg-primary/10 border border-primary/20 rounded-xl py-1.5 sm:py-2 px-3 sm:px-4 mb-2 inline-block w-full max-w-[180px]">
+                            <p className="text-base sm:text-xl font-bold text-primary">
                               ฿{formatCurrency(product.price)}
-                              <span className="text-sm font-normal text-primary/70 ml-1">/{product.stockUnit}</span>
+                              <span className="text-xs sm:text-sm font-normal text-primary/70 ml-1">/{product.stockUnit}</span>
                             </p>
                           </div>
                         </div>
@@ -395,7 +395,7 @@ export default function POS() {
                         {/* Stock */}
                         <div className="w-full text-center">
                           <p className={cn(
-                            "text-sm font-medium",
+                            "text-xs sm:text-sm font-medium",
                             isLowStock ? "text-red-500" : "text-muted-foreground"
                           )}>
                             คงเหลือ: {product.stock} {product.stockUnit}
@@ -443,7 +443,7 @@ export default function POS() {
         // Mobile: fixed full-screen overlay
         mobileTab === 'products'
           ? "hidden lg:flex"
-          : "flex fixed inset-0 z-40 rounded-none lg:relative lg:inset-auto lg:rounded-lg lg:z-auto"
+          : "flex fixed inset-x-0 top-0 bottom-16 z-40 rounded-none lg:relative lg:inset-auto lg:bottom-auto lg:rounded-lg lg:z-auto"
       )}>
         <CardHeader className="pb-3 border-b mb-2">
           <div className="flex items-center justify-between">
@@ -739,23 +739,62 @@ export default function POS() {
           <div className="space-y-5">
             {/* ส่วนลด */}
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-destructive flex items-center gap-1"><Percent className="h-4 w-4" /> ส่วนลด</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[5, 10, 15, 20].map((v) => (
-                  <Button key={v} variant="outline" size="sm"
-                    className={globalDiscount === v ? 'border-destructive text-destructive' : ''}
-                    onClick={() => setGlobalDiscount(v, 'percent')}>
-                    {v}%
-                  </Button>
-                ))}
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-destructive flex items-center gap-1">
+                  <Percent className="h-4 w-4" /> ส่วนลด
+                </p>
+                {/* Toggle % / ฿ */}
+                <div className="flex rounded-lg border border-destructive/40 overflow-hidden text-xs">
+                  <button
+                    className={`px-2.5 py-1 transition-colors ${globalDiscountType === 'percent' ? 'bg-destructive text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                    onClick={() => setGlobalDiscount(globalDiscount, 'percent')}
+                  >%</button>
+                  <button
+                    className={`px-2.5 py-1 transition-colors ${globalDiscountType === 'amount' ? 'bg-destructive text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                    onClick={() => setGlobalDiscount(globalDiscount, 'amount')}
+                  >฿</button>
+                </div>
               </div>
-              <div className="relative">
-                <Input type="number" placeholder="กรอกส่วนลด %"
-                  value={globalDiscount || ''}
-                  onChange={(e) => setGlobalDiscount(Number(e.target.value), 'percent')}
-                  className="pr-8" />
-                <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              </div>
+
+              {globalDiscountType === 'percent' ? (
+                <>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[5, 10, 15, 20].map((v) => (
+                      <Button key={v} variant="outline" size="sm"
+                        className={globalDiscount === v ? 'border-destructive text-destructive' : ''}
+                        onClick={() => setGlobalDiscount(v, 'percent')}>
+                        {v}%
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <Input type="number" placeholder="กรอกส่วนลด %"
+                      value={globalDiscount || ''}
+                      onChange={(e) => setGlobalDiscount(Number(e.target.value), 'percent')}
+                      className="pr-8" />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[20, 50, 100, 200].map((v) => (
+                      <Button key={v} variant="outline" size="sm"
+                        className={globalDiscount === v ? 'border-destructive text-destructive' : ''}
+                        onClick={() => setGlobalDiscount(v, 'amount')}>
+                        ฿{v}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">฿</span>
+                    <Input type="number" placeholder="กรอกจำนวนเงิน"
+                      value={globalDiscount || ''}
+                      onChange={(e) => setGlobalDiscount(Number(e.target.value), 'amount')}
+                      className="pl-7" />
+                  </div>
+                </>
+              )}
               {globalDiscount > 0 && (
                 <p className="text-xs text-destructive">ลด ฿{formatCurrency(discount)}</p>
               )}

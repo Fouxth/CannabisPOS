@@ -57,7 +57,7 @@ export function MainLayout() {
       >
         <Header onMenuClick={() => setMobileMenuOpen(true)} />
         {/* pb-20 on mobile to avoid overlap with bottom nav */}
-        <main className="p-3 sm:p-4 lg:p-6 pb-20 lg:pb-6">
+        <main className="p-3 sm:p-4 lg:p-6 pb-20 lg:pb-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>
