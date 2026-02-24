@@ -10,6 +10,10 @@
         {
             "source": "/api/(.*)",
             "destination": "https://acrobat-screen-trace-referenced.trycloudflare.com/api/$1"
+        },
+        {
+            "source": "/((?!api|socket.io|assets|favicon.ico).*)",
+            "destination": "/index.html"
         }
     ]
 }
