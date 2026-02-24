@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { toUserDto } from '../utils/dtos';
-import { generateToken } from '../middleware/auth';
+import { generateToken, verifyToken } from '../middleware/auth';
 import { managementPrisma } from '../lib/management-db'; // Import Management DB
 import { TenantManager } from '../services/TenantManager';
 
@@ -137,6 +137,33 @@ router.post('/line-webhook', async (req, res) => {
     } catch (error) {
         console.error('LINE Webhook Error', error);
         res.status(500).send('Error');
+    }
+});
+
+// Tenant status check — used by Suspended page to poll if shop has been re-activated
+// Accepts JWT token, verifies it, then checks management DB for tenant.isActive
+router.get('/tenant-status', async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        if (!authHeader) return res.status(401).json({ active: false, reason: 'no_token' });
+
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verifyToken(token);
+
+        if (!decoded) return res.status(401).json({ active: false, reason: 'invalid_token' });
+
+        // SUPER_ADMIN has no tenantId — always active
+        if (!decoded.tenantId) return res.json({ active: true });
+
+        const tenant = await managementPrisma.tenant.findUnique({
+            where: { id: decoded.tenantId },
+            select: { isActive: true },
+        });
+
+        return res.json({ active: !!tenant?.isActive });
+    } catch (error) {
+        console.error('tenant-status error', error);
+        return res.status(500).json({ active: false, reason: 'server_error' });
     }
 });
 

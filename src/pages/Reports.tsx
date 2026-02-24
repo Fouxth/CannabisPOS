@@ -86,6 +86,160 @@ export default function Reports() {
         };
     }, [reportsData]);
 
+    // AI insights engine — enhanced rule-based analysis
+    const aiInsights = useMemo(() => {
+        if (!reportsData) return null;
+
+        const profitMargin = reportsData.profitMargin || 0;
+        const totalRevenue = reportsData.totalRevenue || 0;
+        const totalCost = reportsData.totalCost || 0;
+        const totalExpenses = reportsData.financials?.totalExpenses || 0;
+        const totalIncome = reportsData.financials?.totalIncome || totalRevenue;
+        const totalTransactions = reportsData.totalTransactions || reportsData.totalBills || 0;
+        const lowStockCount = reportsData.inventory?.lowStockCount || 0;
+        const totalProducts = reportsData.inventory?.totalProducts || 0;
+        const topProducts = reportsData.topProducts || [];
+
+        const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
+        const avgBasket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+        const topProductRevShare = topProducts.length > 0 && totalRevenue > 0
+            ? (topProducts[0].revenue / totalRevenue) * 100 : 0;
+        const costRatio = totalRevenue > 0 ? (totalCost / totalRevenue) * 100 : 0;
+
+        // Multi-factor score (0-100)
+        let score = 0;
+        // Profit margin (0-40 pts)
+        if (profitMargin >= 40) score += 40;
+        else if (profitMargin >= 30) score += 32;
+        else if (profitMargin >= 20) score += 22;
+        else if (profitMargin >= 10) score += 10;
+        // Stock health (0-20 pts)
+        if (lowStockCount === 0) score += 20;
+        else if (lowStockCount <= 2) score += 12;
+        else if (lowStockCount <= 5) score += 6;
+        // Sales activity (0-20 pts)
+        if (totalTransactions > 100) score += 20;
+        else if (totalTransactions > 50) score += 15;
+        else if (totalTransactions > 20) score += 10;
+        else if (totalTransactions > 0) score += 5;
+        // Expense control (0-20 pts)
+        if (expenseRatio < 10) score += 20;
+        else if (expenseRatio < 20) score += 14;
+        else if (expenseRatio < 35) score += 8;
+
+        const scoreLabel = score >= 80 ? { text: 'ยอดเยี่ยม', color: 'text-green-500', border: 'border-green-500' }
+            : score >= 60 ? { text: 'ดี', color: 'text-blue-500', border: 'border-blue-500' }
+            : score >= 40 ? { text: 'พอใช้', color: 'text-yellow-500', border: 'border-yellow-500' }
+            : { text: 'ต้องปรับปรุง', color: 'text-red-500', border: 'border-red-500' };
+
+        // Build recommendations — sorted by priority
+        type Rec = { priority: 'critical' | 'warning' | 'info' | 'success'; icon: string; title: string; detail: string; action: string; color: string };
+        const recs: Rec[] = [];
+
+        if (totalRevenue === 0) {
+            recs.push({ priority: 'critical', icon: '🚨', color: 'red',
+                title: 'ยังไม่มียอดขายในช่วงนี้',
+                detail: 'ยังไม่มีการขายในช่วงเวลาที่เลือก',
+                action: 'ลองเปลี่ยนช่วงเวลา หรือตรวจสอบว่า POS ทำงานปกติ' });
+        }
+
+        if (profitMargin < 10 && totalRevenue > 0) {
+            recs.push({ priority: 'critical', icon: '📉', color: 'red',
+                title: `อัตรากำไรวิกฤต (${profitMargin.toFixed(1)}%)`,
+                detail: 'อัตรากำไรต่ำมาก อาจกำลังประสบภาวะขาดทุน',
+                action: 'ปรับราคาขึ้น 15-20% หรือหาซัพพลายเออร์ที่ถูกกว่าทันที' });
+        } else if (profitMargin >= 10 && profitMargin < 20 && totalRevenue > 0) {
+            recs.push({ priority: 'warning', icon: '⚠️', color: 'orange',
+                title: `กำไรต่ำกว่าเกณฑ์ (${profitMargin.toFixed(1)}%)`,
+                detail: 'เป้าหมายควรอยู่ที่ 25-35% สำหรับร้านค้าปลีก',
+                action: 'พิจารณาปรับราคาขึ้น 8-12% หรือลดต้นทุนสินค้า' });
+        }
+
+        if (lowStockCount > 5) {
+            recs.push({ priority: 'critical', icon: '📦', color: 'red',
+                title: `สินค้าใกล้หมด ${lowStockCount} รายการ`,
+                detail: 'มีสินค้าจำนวนมากที่ใกล้หมด เสี่ยงเสียยอดขาย',
+                action: 'สั่งซื้อสินค้าด่วน ก่อนที่จะหมดและเสียลูกค้า' });
+        } else if (lowStockCount > 0) {
+            recs.push({ priority: 'warning', icon: '⚠️', color: 'orange',
+                title: `สินค้าใกล้หมด ${lowStockCount} รายการ`,
+                detail: 'ควรเติมสต็อกก่อนจะขาด',
+                action: 'ไปที่หน้าสต็อกและสั่งซื้อสินค้าที่ใกล้หมด' });
+        }
+
+        if (expenseRatio > 35 && totalIncome > 0) {
+            recs.push({ priority: 'warning', icon: '💸', color: 'orange',
+                title: `ค่าใช้จ่ายสูงมาก (${expenseRatio.toFixed(1)}% ของรายได้)`,
+                detail: 'ค่าใช้จ่ายกินกำไรมากเกินไป ควรทบทวน',
+                action: 'ตรวจสอบรายการค่าใช้จ่ายในหน้าค่าใช้จ่ายและลดที่ไม่จำเป็น' });
+        } else if (expenseRatio > 20 && totalIncome > 0) {
+            recs.push({ priority: 'info', icon: '🔍', color: 'blue',
+                title: `ค่าใช้จ่ายควรระวัง (${expenseRatio.toFixed(1)}%)`,
+                detail: 'ค่าใช้จ่ายเริ่มสูง ควรติดตามอย่างใกล้ชิด',
+                action: 'ทบทวนค่าใช้จ่ายรายเดือนและหาโอกาสลดต้นทุน' });
+        }
+
+        if (topProductRevShare > 70 && topProducts.length > 1) {
+            recs.push({ priority: 'info', icon: '🎯', color: 'blue',
+                title: `ยอดขายพึ่งพาสินค้าชิ้นเดียวสูง (${topProductRevShare.toFixed(0)}%)`,
+                detail: `"${topProducts[0]?.product?.name}" สร้างรายได้เกิน 70% ของยอดรวม มีความเสี่ยง`,
+                action: 'โปรโมทสินค้าอื่นๆ เพื่อกระจายความเสี่ยง' });
+        }
+
+        if (avgBasket > 0 && avgBasket < 300) {
+            recs.push({ priority: 'info', icon: '🛒', color: 'blue',
+                title: `ค่าเฉลี่ยต่อบิลต่ำ (฿${formatCurrency(avgBasket)})`,
+                detail: 'ลูกค้าซื้อน้อยต่อครั้ง มีโอกาสเพิ่มยอดขายต่อบิล',
+                action: 'ใช้โปรโมชัน "ซื้อ X ลด Y" หรือแนะนำสินค้าเสริม ณ จุดชำระเงิน' });
+        } else if (avgBasket >= 300 && avgBasket < 800) {
+            recs.push({ priority: 'success', icon: '🛒', color: 'green',
+                title: `ค่าเฉลี่ยต่อบิลอยู่ในเกณฑ์ดี (฿${formatCurrency(avgBasket)})`,
+                detail: 'ลูกค้าซื้อในระดับที่ดี ลองผลักดันให้สูงขึ้นอีก',
+                action: 'ทดลองใช้ Bundle Deals เพื่อเพิ่มมูลค่าต่อบิล' });
+        }
+
+        if (profitMargin >= 35 && totalRevenue > 0) {
+            recs.push({ priority: 'success', icon: '🚀', color: 'purple',
+                title: `กำไรดีมาก — ถึงเวลาขยาย! (${profitMargin.toFixed(1)}%)`,
+                detail: 'Margin สูงมาก มีกำไรเพียงพอสำหรับการลงทุนเพิ่ม',
+                action: 'ลงทุนในสินค้าใหม่ ขยาย catalog หรือเพิ่มงบการตลาด' });
+        } else if (profitMargin >= 20 && lowStockCount === 0 && totalRevenue > 0) {
+            recs.push({ priority: 'success', icon: '🎉', color: 'green',
+                title: 'ร้านอยู่ในสถานะดี!',
+                detail: `กำไรดี (${profitMargin.toFixed(1)}%) สต็อกเพียงพอ ไม่มีปัญหาเร่งด่วน`,
+                action: 'พิจารณาเพิ่มสินค้าใหม่หรือทำโปรโมชันเพื่อเพิ่มยอดขาย' });
+        }
+
+        if (topProducts.length > 0 && totalRevenue > 0) {
+            recs.push({ priority: 'info', icon: '🏆', color: 'purple',
+                title: `ดาวเด่น: ${topProducts[0]?.product?.name || 'ไม่มีข้อมูล'}`,
+                detail: `ขายได้ ${topProducts[0]?.quantity || 0} หน่วย รายได้ ฿${formatCurrency(topProducts[0]?.revenue || 0)} (${topProductRevShare.toFixed(0)}% ของยอดรวม)`,
+                action: 'ดูแลสต็อกสินค้านี้อย่างใกล้ชิดเพื่อไม่ให้พลาดยอดขาย' });
+        }
+
+        // Sort: critical → warning → success → info
+        const order = { critical: 0, warning: 1, success: 2, info: 3 };
+        recs.sort((a, b) => order[a.priority] - order[b.priority]);
+
+        // Dynamic Do's & Don'ts
+        const dos = [
+            { icon: '📦', text: 'ตรวจสอบสต็อกทุกวัน' },
+            { icon: '📈', text: `รักษา Profit Margin ให้สูงกว่า 25% (ปัจจุบัน ${profitMargin.toFixed(1)}%)` },
+            { icon: '📊', text: 'ดูรายงานสรุปทุกสิ้นเดือน' },
+            ...(topProducts.length > 0 ? [{ icon: '🏆', text: `โปรโมทสินค้าขายดี: ${topProducts[0]?.product?.name || ''}` }] : []),
+            ...(totalTransactions > 0 ? [{ icon: '🛒', text: `เป้าหมายค่าเฉลี่ยต่อบิลให้สูงกว่า ฿${formatCurrency(Math.max(avgBasket * 1.2, 500))}` }] : []),
+        ];
+
+        const donts = [
+            { icon: '⚠️', text: 'ปล่อยให้สินค้าหมดสต็อก' },
+            { icon: '💸', text: `ปล่อยให้ค่าใช้จ่ายเกิน 20% ของรายได้ (ปัจจุบัน ${expenseRatio.toFixed(1)}%)` },
+            { icon: '📉', text: 'ตั้งราคาต่ำจนกำไรหาย' },
+            { icon: '🚫', text: 'ละเลยสินค้าที่ขายไม่ดีโดยไม่วิเคราะห์ต้นทุน' },
+        ];
+
+        return { score, scoreLabel, recs, expenseRatio, avgBasket, topProductRevShare, totalTransactions, dos, donts };
+    }, [reportsData]);
+
     if (isLoading) {
         return (
             <div className="space-y-4">
@@ -144,21 +298,21 @@ export default function Reports() {
                                 <div className="text-5xl animate-pulse">🤖</div>
                                 <div>
                                     <h2 className="text-xl font-bold font-display">AI Shop Advisor</h2>
-                                    <p className="text-muted-foreground">คำแนะนำอัจฉริยะสำหรับการจัดการร้านของคุณ</p>
+                                    <p className="text-muted-foreground">วิเคราะห์ข้อมูลร้านจริงและให้คำแนะนำเฉพาะเจาะจงสำหรับธุรกิจของคุณ</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* Alerts Section - Moved here */}
+                    {/* System Alerts */}
                     {reportsData.alerts && reportsData.alerts.length > 0 && (
                         <div className="space-y-3">
                             <h3 className="text-lg font-semibold flex items-center gap-2">
                                 <AlertTriangle className="h-5 w-5 text-orange-500" />
-                                การแจ้งเตือนและความเสี่ยง
+                                การแจ้งเตือนระบบ
                             </h3>
                             <div className="grid gap-3">
-                                {reportsData.alerts.slice(0, 5).map((alert, index) => (
+                                {reportsData.alerts.slice(0, 3).map((alert, index) => (
                                     <Alert
                                         key={index}
                                         variant={alert.severity === 'critical' ? 'destructive' : 'default'}
@@ -174,201 +328,143 @@ export default function Reports() {
                         </div>
                     )}
 
-                    {/* AI Insights Grid */}
+                    {/* Score + Quick Stats */}
                     <div className="grid gap-4 md:grid-cols-2">
-                        {/* Performance Score */}
+                        {/* Multi-factor Performance Score */}
                         <Card className="glass">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <span className="text-xl">📊</span>
-                                    คะแนนประสิทธิภาพร้าน
+                                    คะแนนสุขภาพธุรกิจ
                                 </CardTitle>
+                                <p className="text-xs text-muted-foreground">คำนวณจาก: กำไร + สต็อก + ยอดขาย + ค่าใช้จ่าย</p>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center justify-center py-4">
-                                    <div className="relative w-32 h-32">
-                                        <div className={`absolute inset-0 rounded-full border-8 ${reportsData.profitMargin >= 30 ? 'border-green-500' :
-                                            reportsData.profitMargin >= 15 ? 'border-yellow-500' : 'border-red-500'
-                                            }`}></div>
+                                    <div className="relative w-36 h-36">
+                                        <div className={`absolute inset-0 rounded-full border-[10px] ${aiInsights?.scoreLabel.border || 'border-gray-400'}`}></div>
                                         <div className="absolute inset-0 flex items-center justify-center flex-col">
-                                            <span className="text-3xl font-bold">{Math.min(Math.round(reportsData.profitMargin * 2), 100)}</span>
+                                            <span className={`text-4xl font-bold ${aiInsights?.scoreLabel.color || ''}`}>{aiInsights?.score ?? 0}</span>
                                             <span className="text-xs text-muted-foreground">/100</span>
                                         </div>
                                     </div>
                                 </div>
-                                <p className="text-center text-sm text-muted-foreground">
-                                    {reportsData.profitMargin >= 30 ? '🎉 ยอดเยี่ยม! ร้านของคุณทำกำไรได้ดีมาก' :
-                                        reportsData.profitMargin >= 15 ? '👍 ดี! แต่ยังมีโอกาสเพิ่มกำไร' :
-                                            '⚠️ ควรปรับปรุง! ลองทบทวนราคาและต้นทุน'}
+                                <p className={`text-center text-base font-semibold ${aiInsights?.scoreLabel.color || ''}`}>
+                                    {aiInsights?.scoreLabel.text}
                                 </p>
+                                <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1">
+                                        <span>📈</span> กำไร: {reportsData.profitMargin.toFixed(1)}%
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span>📦</span> สต็อกต่ำ: {reportsData.inventory.lowStockCount} รายการ
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span>🧾</span> บิล: {aiInsights?.totalTransactions ?? 0} ใบ
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <span>💸</span> ค่าใช้จ่าย: {(aiInsights?.expenseRatio ?? 0).toFixed(1)}%
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
 
-                        {/* Quick Stats */}
+                        {/* Key Metrics */}
                         <Card className="glass">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <span className="text-xl">📈</span>
-                                    สรุปสถานะธุรกิจ
+                                    ตัวชี้วัดสำคัญ
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                                    <span>อัตรากำไรขั้นต้น</span>
-                                    <Badge variant="secondary" className="bg-green-500/20 text-green-700">{reportsData.profitMargin.toFixed(1)}%</Badge>
+                                <div className="flex justify-between items-center p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                    <span className="text-sm">อัตรากำไรขั้นต้น</span>
+                                    <Badge className={reportsData.profitMargin >= 25 ? 'bg-emerald-500/20 text-emerald-700 border-emerald-500' : reportsData.profitMargin >= 15 ? 'bg-yellow-500/20 text-yellow-700 border-yellow-500' : 'bg-red-500/20 text-red-700 border-red-500'} variant="outline">
+                                        {reportsData.profitMargin.toFixed(1)}%
+                                    </Badge>
                                 </div>
                                 <div className="flex justify-between items-center p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                                    <span>สินค้าในสต็อก</span>
-                                    <Badge variant="secondary" className="bg-blue-500/20 text-blue-700">{reportsData.inventory.totalProducts} รายการ</Badge>
+                                    <span className="text-sm">ค่าเฉลี่ยต่อบิล</span>
+                                    <Badge variant="outline" className="bg-blue-500/20 text-blue-700 border-blue-500">
+                                        ฿{formatCurrency(aiInsights?.avgBasket ?? 0)}
+                                    </Badge>
                                 </div>
-                                <div className={`flex justify-between items-center p-3 rounded-lg ${reportsData.inventory.lowStockCount > 0 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-green-500/10 border-green-500/20'
-                                    } border`}>
-                                    <span>สินค้าใกล้หมด</span>
-                                    <Badge variant={reportsData.inventory.lowStockCount > 0 ? "destructive" : "secondary"}>
-                                        {reportsData.inventory.lowStockCount} รายการ
+                                <div className="flex justify-between items-center p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                                    <span className="text-sm">สต็อกสินค้าทั้งหมด</span>
+                                    <Badge variant="outline" className="bg-purple-500/20 text-purple-700 border-purple-500">
+                                        {reportsData.inventory.totalProducts} รายการ
+                                    </Badge>
+                                </div>
+                                <div className={`flex justify-between items-center p-3 rounded-lg border ${(aiInsights?.expenseRatio ?? 0) > 25 ? 'bg-orange-500/10 border-orange-500/20' : 'bg-green-500/10 border-green-500/20'}`}>
+                                    <span className="text-sm">สัดส่วนค่าใช้จ่าย</span>
+                                    <Badge variant="outline" className={(aiInsights?.expenseRatio ?? 0) > 25 ? 'bg-orange-500/20 text-orange-700 border-orange-500' : 'bg-green-500/20 text-green-700 border-green-500'}>
+                                        {(aiInsights?.expenseRatio ?? 0).toFixed(1)}%
                                     </Badge>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* AI Recommendations */}
+                    {/* Smart Recommendations */}
                     <Card className="glass">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <span className="text-xl">💡</span>
-                                คำแนะนำจาก AI
+                                คำแนะนำอัจฉริยะ
+                                {aiInsights && (
+                                    <Badge variant="secondary" className="ml-auto text-xs">
+                                        {aiInsights.recs.length} รายการ
+                                    </Badge>
+                                )}
                             </CardTitle>
+                            <p className="text-xs text-muted-foreground">เรียงลำดับตามความสำคัญ — วิเคราะห์จากข้อมูลร้านจริง</p>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            {/* Dynamic Recommendations based on data */}
-                            {reportsData.inventory.lowStockCount > 0 && (
-                                <div className="p-4 rounded-xl bg-gradient-to-r from-orange-500/20 to-orange-500/5 border border-orange-500/30">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-2xl">⚠️</div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Badge variant="outline" className="border-orange-500 text-orange-600">สำคัญ</Badge>
-                                                <span className="text-xs text-muted-foreground">สต็อกสินค้า</span>
+                        <CardContent className="space-y-3">
+                            {aiInsights?.recs.map((rec, i) => {
+                                const colorMap: Record<string, { bg: string; border: string; badgeCls: string; textCls: string; badgeLabel: string }> = {
+                                    red:    { bg: 'from-red-500/20 to-red-500/5',     border: 'border-red-500/30',    badgeCls: 'bg-red-500/20 text-red-700 border-red-500',       textCls: 'text-red-600',    badgeLabel: 'วิกฤต' },
+                                    orange: { bg: 'from-orange-500/20 to-orange-500/5', border: 'border-orange-500/30', badgeCls: 'bg-orange-500/20 text-orange-700 border-orange-500', textCls: 'text-orange-600', badgeLabel: 'สำคัญ' },
+                                    green:  { bg: 'from-green-500/20 to-green-500/5',  border: 'border-green-500/30',  badgeCls: 'bg-green-500/20 text-green-700 border-green-500',   textCls: 'text-green-600',  badgeLabel: 'ดี' },
+                                    blue:   { bg: 'from-blue-500/20 to-blue-500/5',    border: 'border-blue-500/30',   badgeCls: 'bg-blue-500/20 text-blue-700 border-blue-500',      textCls: 'text-blue-600',   badgeLabel: 'แนะนำ' },
+                                    purple: { bg: 'from-purple-500/20 to-purple-500/5', border: 'border-purple-500/30', badgeCls: 'bg-purple-500/20 text-purple-700 border-purple-500', textCls: 'text-purple-600', badgeLabel: 'ข้อมูล' },
+                                };
+                                const c = colorMap[rec.color] ?? colorMap.blue;
+                                return (
+                                    <div key={i} className={`p-4 rounded-xl bg-gradient-to-r ${c.bg} border ${c.border} animate-slide-up`} style={{ animationDelay: `${i * 80}ms` }}>
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-2xl">{rec.icon}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                    <Badge variant="outline" className={c.badgeCls}>{c.badgeLabel}</Badge>
+                                                </div>
+                                                <h4 className="font-semibold text-sm">{rec.title}</h4>
+                                                <p className="text-xs text-muted-foreground mt-1">{rec.detail}</p>
+                                                <p className={`text-xs font-medium ${c.textCls} mt-2`}>✅ แนะนำ: {rec.action}</p>
                                             </div>
-                                            <h4 className="font-semibold">ควรเติมสต็อกสินค้า {reportsData.inventory.lowStockCount} รายการ</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">มีสินค้าใกล้หมดสต็อก ควรสั่งซื้อเพิ่มเพื่อป้องกันการสูญเสียยอดขาย</p>
-                                            <p className="text-sm font-medium text-orange-600 mt-2">
-                                                ✅ แนะนำ: ไปที่หน้าสต็อกและเติมสินค้าที่ใกล้หมด
-                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                            )}
-
-                            {reportsData.profitMargin < 20 && (
-                                <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-red-500/5 border border-red-500/30">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-2xl">📉</div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Badge variant="destructive">วิกฤต</Badge>
-                                                <span className="text-xs text-muted-foreground">กำไร</span>
-                                            </div>
-                                            <h4 className="font-semibold">อัตรากำไรต่ำกว่าเกณฑ์</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">อัตรากำไร {reportsData.profitMargin.toFixed(1)}% ถือว่าต่ำ ควรทบทวนราคาขายหรือลดต้นทุน</p>
-                                            <p className="text-sm font-medium text-red-600 mt-2">
-                                                ✅ แนะนำ: พิจารณาปรับราคาขายขึ้น 10-15% หรือหาซัพพลายเออร์ที่ราคาถูกกว่า
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {reportsData.profitMargin >= 20 && reportsData.inventory.lowStockCount === 0 && (
-                                <div className="p-4 rounded-xl bg-gradient-to-r from-green-500/20 to-green-500/5 border border-green-500/30">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-2xl">🎉</div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Badge variant="secondary" className="bg-green-500/20 text-green-600">ยอดเยี่ยม</Badge>
-                                                <span className="text-xs text-muted-foreground">สถานะร้าน</span>
-                                            </div>
-                                            <h4 className="font-semibold">ร้านของคุณอยู่ในสถานะที่ดี!</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">กำไรดี สต็อกเพียงพอ ไม่มีปัญหาเร่งด่วน</p>
-                                            <p className="text-sm font-medium text-green-600 mt-2">
-                                                ✅ แนะนำ: พิจารณาเพิ่มสินค้าใหม่หรือทำโปรโมชันเพื่อเพิ่มยอดขาย
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Top Product Insight */}
-                            {reportsData.topProducts && reportsData.topProducts.length > 0 && (
-                                <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-purple-500/5 border border-purple-500/30">
-                                    <div className="flex items-start gap-3">
-                                        <div className="text-2xl">🏆</div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <Badge variant="secondary" className="bg-purple-500/20 text-purple-600">ข้อมูลเชิงลึก</Badge>
-                                                <span className="text-xs text-muted-foreground">สินค้าขายดี</span>
-                                            </div>
-                                            <h4 className="font-semibold">สินค้าขายดีที่สุด: {reportsData.topProducts[0]?.product?.name || 'ไม่มีข้อมูล'}</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">
-                                                ขายได้ {reportsData.topProducts[0]?.quantity || 0} กรัม สร้างรายได้ ฿{formatCurrency(reportsData.topProducts[0]?.revenue || 0)}
-                                            </p>
-                                            <p className="text-sm font-medium text-purple-600 mt-2">
-                                                ✅ แนะนำ: ให้ความสำคัญกับสินค้านี้และตรวจสอบให้มีสต็อกเพียงพอ
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Sales Trend Insight */}
-                            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-500/20 to-blue-500/5 border border-blue-500/30">
-                                <div className="flex items-start gap-3">
-                                    <div className="text-2xl">📊</div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">แนวโน้ม</Badge>
-                                            <span className="text-xs text-muted-foreground">ยอดขาย</span>
-                                        </div>
-                                        <h4 className="font-semibold">ยอดขายรวม ฿{formatCurrency(reportsData.totalRevenue)}</h4>
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            กำไรขั้นต้น ฿{formatCurrency(reportsData.totalProfit)} (Margin {reportsData.profitMargin.toFixed(1)}%)
-                                        </p>
-                                        <p className="text-sm font-medium text-blue-600 mt-2">
-                                            ✅ แนะนำ: ตั้งเป้าหมายยอดขายรายเดือนและติดตามความก้าวหน้า
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                                );
+                            })}
                         </CardContent>
                     </Card>
 
-                    {/* Do's and Don'ts */}
+                    {/* Dynamic Do's & Don'ts */}
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card className="glass border-green-500/30">
                             <CardHeader className="pb-3">
                                 <CardTitle className="flex items-center gap-2 text-green-600">
                                     <span className="text-xl">✅</span>
-                                    สิ่งที่ควรทำ
+                                    สิ่งที่ควรทำ (เฉพาะร้านคุณ)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <div className="flex items-center gap-2 p-2 rounded bg-green-500/10">
-                                    <span>📦</span>
-                                    <span className="text-sm">ตรวจสอบสต็อกทุกวัน</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-green-500/10">
-                                    <span>📈</span>
-                                    <span className="text-sm">วิเคราะห์สินค้าขายดีและเน้นโปรโมท</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-green-500/10">
-                                    <span>💰</span>
-                                    <span className="text-sm">รักษา Profit Margin ให้มากกว่า 25%</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-green-500/10">
-                                    <span>📊</span>
-                                    <span className="text-sm">ดูรายงานสรุปทุกสิ้นเดือน</span>
-                                </div>
+                                {aiInsights?.dos.map((item, i) => (
+                                    <div key={i} className="flex items-center gap-2 p-2 rounded bg-green-500/10">
+                                        <span>{item.icon}</span>
+                                        <span className="text-sm">{item.text}</span>
+                                    </div>
+                                ))}
                             </CardContent>
                         </Card>
 
@@ -376,26 +472,16 @@ export default function Reports() {
                             <CardHeader className="pb-3">
                                 <CardTitle className="flex items-center gap-2 text-red-600">
                                     <span className="text-xl">❌</span>
-                                    สิ่งที่ไม่ควรทำ
+                                    สิ่งที่ไม่ควรทำ (ข้อมูลจริง)
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10">
-                                    <span>⚠️</span>
-                                    <span className="text-sm">ปล่อยให้สินค้าหมดสต็อก</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10">
-                                    <span>💸</span>
-                                    <span className="text-sm">ตั้งราคาต่ำเกินไปจนขาดทุน</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10">
-                                    <span>📉</span>
-                                    <span className="text-sm">ละเลยสินค้าที่ขายไม่ดี</span>
-                                </div>
-                                <div className="flex items-center gap-2 p-2 rounded bg-red-500/10">
-                                    <span>🚫</span>
-                                    <span className="text-sm">ไม่ติดตามต้นทุนสินค้า</span>
-                                </div>
+                                {aiInsights?.donts.map((item, i) => (
+                                    <div key={i} className="flex items-center gap-2 p-2 rounded bg-red-500/10">
+                                        <span>{item.icon}</span>
+                                        <span className="text-sm">{item.text}</span>
+                                    </div>
+                                ))}
                             </CardContent>
                         </Card>
                     </div>

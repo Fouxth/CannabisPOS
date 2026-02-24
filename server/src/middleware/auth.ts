@@ -37,6 +37,7 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
     // So /api/auth/login becomes /auth/login
     const publicPaths = [
         '/auth/login',
+        '/auth/tenant-status',
         '/health',
     ];
 

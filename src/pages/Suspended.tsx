@@ -11,36 +11,31 @@ export default function Suspended() {
     useEffect(() => {
         const checkStatus = async () => {
             try {
-                // We attempt to login just to check the tenant status middleware response
-                const response = await fetch(`${API_BASE_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-tenant-domain': window.location.hostname
-                    },
-                    body: JSON.stringify({ username: 'check', password: 'check' })
+                const token = localStorage.getItem('auth_token');
+                if (!token) return; // No token, stay locked
+
+                const response = await fetch(`${API_BASE_URL}/auth/tenant-status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                const text = await response.text();
+                if (!response.ok) return; // Server error or invalid token — stay locked
 
-                // If the response is NOT the specific inactivity error, it means the shop is back
-                const isInactive =
-                    (response.status === 403 && text.includes('Shop is inactive')) ||
-                    (response.status === 404 && text.includes('Tenant not found or inactive'));
+                const data = await response.json();
 
-                if (!isInactive) {
+                // Only unlock when management DB explicitly says active: true
+                if (data.active === true) {
                     setIsRestored(true);
-                    logout(); // Clear auth state immediately
+                    logout();
                     setTimeout(() => {
                         window.location.href = '/login';
                     }, 3000);
                 }
             } catch (error) {
-                console.error("Status check failed", error);
+                console.error('Status check failed', error);
             }
         };
 
-        const interval = setInterval(checkStatus, 3000); // Check every 3 seconds
+        const interval = setInterval(checkStatus, 5000); // Check every 5 seconds
         return () => clearInterval(interval);
     }, [logout]);
 
