@@ -1,8 +1,15 @@
 {
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "framework": "vite",
     "rewrites": [
         {
+            "source": "/socket.io/:path*",
+            "destination": "https://acrobat-screen-trace-referenced.trycloudflare.com/socket.io/:path*"
+        },
+        {
             "source": "/api/(.*)",
-            "destination": "/api/index.ts"
+            "destination": "https://acrobat-screen-trace-referenced.trycloudflare.com/api/$1"
         }
     ]
 }

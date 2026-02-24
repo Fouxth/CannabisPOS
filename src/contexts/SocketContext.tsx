@@ -14,7 +14,7 @@ const SocketContext = createContext<SocketContextType>({
 
 export const useSocket = () => useContext(SocketContext);
 
-const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, isAuthenticated } = useAuth();
@@ -22,20 +22,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        // Only connect to Socket.io on localhost (development)
-        // Vercel serverless doesn't support WebSockets
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-        if (!isLocalhost) {
-            // Skip socket connection on production
-            return;
-        }
-
         if (isAuthenticated && user) {
             const newSocket = io(SOCKET_URL, {
-                reconnectionAttempts: 3,
-                timeout: 5000,
+                reconnectionAttempts: 5,
+                timeout: 10000,
                 autoConnect: true,
+                transports: ['websocket', 'polling'], // ลอง WebSocket ก่อน fallback เป็น polling
             });
 
             newSocket.on('connect', () => {

@@ -15,11 +15,17 @@ export class SocketService {
     }
 
     public init(httpServer: HttpServer) {
+        const allowedOrigins = process.env.CORS_ORIGIN
+            ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+            : ['http://localhost:5173', 'http://localhost:3000'];
+
         this.io = new SocketIOServer(httpServer, {
             cors: {
-                origin: "*", // Adjust this for production
-                methods: ["GET", "POST"]
-            }
+                origin: allowedOrigins,
+                methods: ["GET", "POST"],
+                credentials: true,
+            },
+            transports: ['websocket', 'polling'],
         });
 
         this.io.on('connection', (socket) => {
