@@ -13,15 +13,14 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/dashboard';
-
   // Redirect if already logged in
   if (isAuthenticated) {
-    navigate(from, { replace: true });
+    const targetPath = user?.role === 'SUPER_ADMIN' ? '/admin' : (location.state?.from?.pathname || '/dashboard');
+    navigate(targetPath, { replace: true });
     return null;
   }
 
@@ -33,7 +32,9 @@ export default function Login() {
       const success = await login(email, password);
       if (success) {
         toast.success('เข้าสู่ระบบสำเร็จ');
-        navigate(from, { replace: true });
+        const currentUser = useAuth.getState().user;
+        const targetPath = currentUser?.role === 'SUPER_ADMIN' ? '/admin' : (location.state?.from?.pathname || '/dashboard');
+        navigate(targetPath, { replace: true });
       } else {
         toast.error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       }

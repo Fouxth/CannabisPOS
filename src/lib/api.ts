@@ -40,7 +40,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      'x-tenant-domain': window.location.hostname,
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
@@ -75,7 +74,6 @@ async function requestBlob(path: string, options: RequestInit = {}): Promise<Blo
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
-      'x-tenant-domain': window.location.hostname,
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
@@ -226,6 +224,7 @@ export const api = {
     totalRevenue: number;
     totalSales: number;
   }>('/management/stats'),
+  getDbStatus: () => request<{ connected: boolean }>('/management/db-status'),
   getTenants: () => request<any[]>('/management/tenants'),
   getTenantDetails: (id: string) => request<any>(`/management/tenants/${id}`),
   getTenantUsers: (id: string) => request<any[]>(`/management/tenants/${id}/users`),

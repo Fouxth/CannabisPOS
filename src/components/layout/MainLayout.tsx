@@ -18,17 +18,21 @@ const mobileNavItems: { icon: React.ElementType; label: string; path: string; pe
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isAuthenticated, hasPermission } = useAuth();
+  const { isAuthenticated, hasPermission, user } = useAuth();
   const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
+  if (user?.role === 'SUPER_ADMIN') {
+    return <Navigate to="/admin" replace />;
+  }
+
   const visibleMobileItems = mobileNavItems.filter(item => hasPermission(item.permission));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-[#DCEEFE] via-[#EBF3FC] to-[#F5F8FA] dark:from-[#0B0F19] dark:via-[#111827] dark:to-[#0B0F19] text-foreground font-sans antialiased">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <Sidebar

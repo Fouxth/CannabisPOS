@@ -42,7 +42,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-3 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 sm:h-16 items-center justify-between border-b border-border/40 bg-background/60 backdrop-blur-md supports-[backdrop-filter]:bg-background/40 px-3 sm:px-6">
       {/* Left: Menu Button (Mobile) & Date */}
       <div className="flex items-center gap-2 sm:gap-4">
         <Button

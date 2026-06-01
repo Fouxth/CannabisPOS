@@ -14,6 +14,7 @@ datasource db {
 // User/Employee Model
 model User {
   id            String   @id @default(uuid())
+  tenantId      String   @default("default")
   employeeCode  String   @unique
   username      String   @unique
   fullName      String
@@ -34,6 +35,7 @@ model User {
   expenses      Expense[]
   notifications Notification[]
 
+  @@index([tenantId])
   @@map("users")
 }
 
@@ -49,6 +51,7 @@ enum UserRole {
 // Category Model
 model Category {
   id           String    @id @default(uuid())
+  tenantId     String    @default("default")
   name         String
   nameEn       String?
   slug         String    @unique
@@ -66,12 +69,14 @@ model Category {
   parent       Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children     Category[] @relation("CategoryHierarchy")
 
+  @@index([tenantId])
   @@map("categories")
 }
 
 // Product Model
 model Product {
   id          String    @id @default(uuid())
+  tenantId    String    @default("default")
   name        String
   description String?   @db.Text
   price       Decimal   @db.Decimal(10, 2)
@@ -95,12 +100,14 @@ model Product {
   billItems   BillItem[]
   stockMovements StockMovement[]
 
+  @@index([tenantId])
   @@map("products")
 }
 
 // Sale Model
 model Sale {
   id              String      @id @default(uuid())
+  tenantId        String      @default("default")
   saleNumber      String      @unique
   userId          String
   customerId      String?
@@ -121,6 +128,7 @@ model Sale {
   user            User        @relation(fields: [userId], references: [id])
   items           SaleItem[]
 
+  @@index([tenantId])
   @@map("sales")
 }
 
@@ -140,6 +148,7 @@ enum SaleStatus {
 // Sale Item Model
 model SaleItem {
   id          String   @id @default(uuid())
+  tenantId    String   @default("default")
   saleId      String
   productId   String
   productName String
@@ -153,12 +162,14 @@ model SaleItem {
   sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
 
+  @@index([tenantId])
   @@map("sale_items")
 }
 
 // Bill Model (Customer Receipt)
 model Bill {
   id              String     @id @default(uuid())
+  tenantId        String     @default("default")
   billNumber      String     @unique
   userId          String
   customerId      String?
@@ -180,6 +191,7 @@ model Bill {
   user            User       @relation(fields: [userId], references: [id])
   items           BillItem[]
 
+  @@index([tenantId])
   @@map("bills")
 }
 
@@ -191,6 +203,7 @@ enum BillStatus {
 // Bill Item Model
 model BillItem {
   id          String   @id @default(uuid())
+  tenantId    String   @default("default")
   billId      String
   productId   String
   productName String
@@ -204,12 +217,14 @@ model BillItem {
   bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
 
+  @@index([tenantId])
   @@map("bill_items")
 }
 
 // Stock Movement Model
 model StockMovement {
   id               String         @id @default(uuid())
+  tenantId         String         @default("default")
   productId        String
   userId           String
   movementType     MovementType
@@ -224,6 +239,7 @@ model StockMovement {
   product          Product        @relation(fields: [productId], references: [id])
   user             User           @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@map("stock_movements")
 }
 
@@ -238,6 +254,7 @@ enum MovementType {
 // Payment Method Model
 model PaymentMethod {
   id        String          @id @default(uuid())
+  tenantId  String          @default("default")
   name      String
   nameEn    String?
   type      PaymentType
@@ -247,6 +264,7 @@ model PaymentMethod {
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
+  @@index([tenantId])
   @@map("payment_methods")
 }
 
@@ -259,16 +277,19 @@ enum PaymentType {
 
 model SystemSetting {
   key       String   @id
+  tenantId  String   @default("default")
   value     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("system_settings")
 }
 
 // Expense Model
 model Expense {
   id        String        @id @default(uuid())
+  tenantId  String        @default("default")
   title     String
   amount    Decimal       @db.Decimal(10, 2)
   category  ExpenseCategory
@@ -281,6 +302,7 @@ model Expense {
   // Relations
   user      User          @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@map("expenses")
 }
 
@@ -296,6 +318,7 @@ enum ExpenseCategory {
 // Notification Model
 model Notification {
   id        String           @id @default(uuid())
+  tenantId  String           @default("default")
   userId    String
   type      NotificationType
   title     String
@@ -308,6 +331,7 @@ model Notification {
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+  @@index([tenantId])
   @@index([userId, isRead])
   @@index([createdAt])
 }
@@ -320,11 +344,13 @@ enum NotificationType {
   INFO
   WARNING
   ERROR
+  SYSTEM
 }
 
 // Promotion Model
 model Promotion {
   id            String          @id @default(uuid())
+  tenantId      String          @default("default")
   name          String
   description   String?         @db.Text
   type          PromotionType
@@ -341,6 +367,7 @@ model Promotion {
   updatedAt     DateTime        @updatedAt
 
   @@map("promotions")
+  @@index([tenantId])
   @@index([code])
   @@index([isActive, startDate, endDate])
 }
@@ -354,6 +381,7 @@ enum PromotionType {
 // Audit Log Model
 model AuditLog {
   id          String   @id @default(uuid())
+  tenantId    String   @default("default")
   userId      String
   action      String
   entity      String
@@ -365,6 +393,7 @@ model AuditLog {
   createdAt   DateTime @default(now())
 
   @@map("audit_logs")
+  @@index([tenantId])
   @@index([userId])
   @@index([entity, entityId])
   @@index([createdAt])

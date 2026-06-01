@@ -25,7 +25,6 @@ import Suspended from "./pages/Suspended";
 import TenantDashboard from "./pages/admin/TenantDashboard";
 import TenantDetails from "./pages/admin/TenantDetails";
 import TenantUsers from "./pages/admin/TenantUsers";
-import TenantActivity from "./pages/admin/TenantActivity";
 import { useAuth } from "@/hooks/useAuth";
 import { SocketProvider } from "./contexts/SocketContext";
 
@@ -67,7 +66,6 @@ const App = () => (
                   <Route path="/admin" element={<TenantDashboard />} />
                   <Route path="/admin/tenants/:id" element={<TenantDetails />} />
                   <Route path="/admin/tenants/:id/users" element={<TenantUsers />} />
-                  <Route path="/admin/activity" element={<TenantActivity />} />
                 </Route>
               </Route>
 

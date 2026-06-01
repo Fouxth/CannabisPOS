@@ -5,33 +5,30 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { socketService } from '../services/SocketService';
 
+import { prisma } from '../lib/db';
+
 const router = express.Router();
 
 // Helper function to get tenant's Prisma client
 async function getTenantPrisma(tenantId: string) {
-    const tenant = await managementPrisma.tenant.findUnique({
-        where: { id: tenantId },
-    });
-
-    if (!tenant) {
-        throw new Error('Tenant not found');
-    }
-
-    return new PrismaClient({
-        datasources: {
-            db: {
-                url: tenant.dbUrl,
-            },
-        },
-    });
+    return prisma;
 }
+
+// GET /api/management/db-status - Database connection status check
+router.get('/db-status', async (req, res) => {
+    try {
+        await managementPrisma.$queryRaw`SELECT 1`;
+        res.json({ connected: true });
+    } catch (error) {
+        console.error('Database connection failed:', error);
+        res.status(500).json({ connected: false, message: 'Database connection failed' });
+    }
+});
 
 // GET /api/management/stats - Overview statistics
 router.get('/stats', async (req, res) => {
     try {
-        const tenants = await managementPrisma.tenant.findMany({
-            include: { domains: true },
-        });
+        const tenants = await managementPrisma.tenant.findMany();
 
         const activeTenants = tenants.filter(t => t.isActive).length;
         let totalUsers = 0;
@@ -46,19 +43,19 @@ router.get('/stats', async (req, res) => {
                 const tenantPrisma = await getTenantPrisma(tenant.id);
 
                 // Count users
-                const userCount = await tenantPrisma.user.count();
+                const userCount = await tenantPrisma.user.count({ where: { tenantId: tenant.id } });
                 totalUsers += userCount;
 
                 // Sum revenue
                 const bills = await tenantPrisma.bill.findMany({
-                    where: { status: 'COMPLETED' },
+                    where: { tenantId: tenant.id, status: 'COMPLETED' },
                     select: { totalAmount: true },
                 });
                 const revenue = bills.reduce((sum, bill) => sum + Number(bill.totalAmount), 0);
                 totalRevenue += revenue;
                 totalSales += bills.length;
 
-                await tenantPrisma.$disconnect();
+                // No disconnect for shared global prisma instance
             } catch (error) {
                 console.error(`Failed to get stats for tenant ${tenant.id}:`, error);
             }
@@ -81,7 +78,6 @@ router.get('/stats', async (req, res) => {
 router.get('/tenants', async (req, res) => {
     try {
         const tenants = await managementPrisma.tenant.findMany({
-            include: { domains: true },
             orderBy: { createdAt: 'desc' },
         });
 
@@ -90,25 +86,28 @@ router.get('/tenants', async (req, res) => {
             tenants.map(async (tenant) => {
                 try {
                     const tenantPrisma = await getTenantPrisma(tenant.id);
-                    const userCount = await tenantPrisma.user.count();
+                    const userCount = await tenantPrisma.user.count({ where: { tenantId: tenant.id } });
+                    const billCount = await tenantPrisma.bill.count({ where: { tenantId: tenant.id } });
 
                     // Get last bill as activity indicator
                     const lastBill = await tenantPrisma.bill.findFirst({
+                        where: { tenantId: tenant.id },
                         orderBy: { createdAt: 'desc' },
                         select: { createdAt: true },
                     });
 
                     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
                     const monthlyBills = await tenantPrisma.bill.aggregate({
-                        where: { status: 'COMPLETED', createdAt: { gte: thirtyDaysAgo } },
+                        where: { tenantId: tenant.id, status: 'COMPLETED', createdAt: { gte: thirtyDaysAgo } },
                         _sum: { totalAmount: true },
                     });
 
-                    await tenantPrisma.$disconnect();
+                    // No disconnect for shared global prisma instance
 
                     return {
                         ...tenant,
                         userCount,
+                        billCount,
                         lastActivity: lastBill?.createdAt || null,
                         monthlyRevenue: Number(monthlyBills._sum.totalAmount || 0),
                     };
@@ -137,7 +136,6 @@ router.get('/tenants/:id', async (req, res) => {
     try {
         const tenant = await managementPrisma.tenant.findUnique({
             where: { id },
-            include: { domains: true },
         });
 
         if (!tenant) {
@@ -148,11 +146,12 @@ router.get('/tenants/:id', async (req, res) => {
 
         // Get various metrics
         const [userCount, productCount, categoryCount, todaySales, weekSales, monthSales] = await Promise.all([
-            tenantPrisma.user.count(),
-            tenantPrisma.product.count(),
-            tenantPrisma.category.count(),
+            tenantPrisma.user.count({ where: { tenantId: id } }),
+            tenantPrisma.product.count({ where: { tenantId: id } }),
+            tenantPrisma.category.count({ where: { tenantId: id } }),
             tenantPrisma.bill.aggregate({
                 where: {
+                    tenantId: id,
                     status: 'COMPLETED',
                     createdAt: {
                         gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -163,6 +162,7 @@ router.get('/tenants/:id', async (req, res) => {
             }),
             tenantPrisma.bill.aggregate({
                 where: {
+                    tenantId: id,
                     status: 'COMPLETED',
                     createdAt: {
                         gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -173,6 +173,7 @@ router.get('/tenants/:id', async (req, res) => {
             }),
             tenantPrisma.bill.aggregate({
                 where: {
+                    tenantId: id,
                     status: 'COMPLETED',
                     createdAt: {
                         gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -183,7 +184,7 @@ router.get('/tenants/:id', async (req, res) => {
             }),
         ]);
 
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json({
             ...tenant,
@@ -229,6 +230,7 @@ router.get('/tenants/:id/users', async (req, res) => {
         const tenantPrisma = await getTenantPrisma(id);
 
         const users = await tenantPrisma.user.findMany({
+            where: { tenantId: id },
             orderBy: { createdAt: 'desc' },
             select: {
                 id: true,
@@ -244,7 +246,7 @@ router.get('/tenants/:id/users', async (req, res) => {
             },
         });
 
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json(users);
     } catch (error: any) {
@@ -296,7 +298,7 @@ router.post('/tenants/:id/users', async (req, res) => {
                 isActive: true
             }
         });
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.status(201).json(newUserCentral);
     } catch (error: any) {
@@ -346,7 +348,7 @@ router.get('/tenants/:id/stats', async (req, res) => {
             return acc;
         }, {});
 
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json({
             dailyStats: Object.values(dailyStats),
@@ -361,10 +363,10 @@ router.get('/tenants/:id/stats', async (req, res) => {
 
 // POST /api/management/tenants
 router.post('/tenants', async (req, res) => {
-    const { name, slug, domain, ownerName } = req.body;
+    const { name, slug, domain = '', ownerName } = req.body;
 
-    if (!name || !slug || !domain) {
-        return res.status(400).json({ message: 'Missing required fields: name, slug, domain' });
+    if (!name || !slug) {
+        return res.status(400).json({ message: 'Missing required fields: name, slug' });
     }
 
     try {
@@ -372,7 +374,7 @@ router.post('/tenants', async (req, res) => {
 
         // Auto-create default owner
         const username = `admin@${slug}`.toLowerCase();
-        const password = 'password123';
+        const password = Math.random().toString(36).slice(-8);
         const hashedPassword = await bcrypt.hash(password, 10);
         const fullName = ownerName || 'Shop Owner';
 
@@ -392,6 +394,7 @@ router.post('/tenants', async (req, res) => {
         await tenantPrisma.user.create({
             data: {
                 id: user.id,
+                tenantId: tenant.id, // Link to the specific tenant
                 username,
                 password: hashedPassword,
                 fullName,
@@ -405,6 +408,7 @@ router.post('/tenants', async (req, res) => {
         await tenantPrisma.paymentMethod.createMany({
             data: [
                 {
+                    tenantId: tenant.id, // Link to the specific tenant
                     name: 'เงินสด',
                     nameEn: 'Cash',
                     type: 'CASH',
@@ -412,6 +416,7 @@ router.post('/tenants', async (req, res) => {
                     isActive: true
                 },
                 {
+                    tenantId: tenant.id, // Link to the specific tenant
                     name: 'โอนเงิน',
                     nameEn: 'Transfer',
                     type: 'TRANSFER',
@@ -426,6 +431,7 @@ router.post('/tenants', async (req, res) => {
         await tenantPrisma.systemSetting.create({
             data: {
                 key: 'store',
+                tenantId: tenant.id, // Link to the specific tenant
                 value: {
                     storeName: name
                 }
@@ -433,7 +439,7 @@ router.post('/tenants', async (req, res) => {
         });
         console.log('[Provisioning] ✅ Default store settings created');
 
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.status(201).json({
             ...tenant,
@@ -468,7 +474,6 @@ router.patch('/tenants/:id', async (req, res) => {
         const tenant = await managementPrisma.tenant.update({
             where: { id },
             data: updateData,
-            include: { domains: true },
         });
         res.json(tenant);
     } catch (error: any) {
@@ -514,7 +519,6 @@ router.get('/activity', async (req, res) => {
     try {
         const tenants = await managementPrisma.tenant.findMany({
             where: { isActive: true },
-            include: { domains: true },
         });
 
         const activities: any[] = [];
@@ -552,7 +556,7 @@ router.get('/activity', async (req, res) => {
                     });
                 });
 
-                await tenantPrisma.$disconnect();
+                // No disconnect for shared global prisma instance
             } catch (error) {
                 console.error(`Failed to get activity for tenant ${tenant.id}:`, error);
             }
@@ -600,7 +604,7 @@ router.post('/tenants/:id/reset-password', async (req, res) => {
             where: { id: ownerUser.id },
             data: { password: hashedPassword },
         });
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json({ message: 'Password reset successfully', username: ownerUser.username });
     } catch (error: any) {
@@ -670,7 +674,7 @@ router.patch('/tenants/:tenantId/users/:userId', async (req, res) => {
             where: { id: userId },
             data: { isActive },
         });
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json({ message: `User ${isActive ? 'activated' : 'deactivated'} successfully` });
     } catch (error: any) {
@@ -704,7 +708,7 @@ router.post('/tenants/:tenantId/users/:userId/reset-password', async (req, res) 
             where: { id: userId },
             data: { password: hashedPassword },
         });
-        await tenantPrisma.$disconnect();
+        // No disconnect for shared global prisma instance
 
         res.json({ message: 'Password reset successfully' });
     } catch (error: any) {

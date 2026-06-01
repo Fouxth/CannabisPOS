@@ -202,14 +202,14 @@ export default function TenantDetails() {
 
             {/* Shop Info */}
             <div className="grid gap-4 md:grid-cols-3">
-                <Card>
+                <Card className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-md">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Domain</CardTitle>
-                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-semibold text-slate-500 dark:text-slate-400">Shop Slug</CardTitle>
+                        <Globe className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">{tenant.domains[0]?.domain}</div>
-                        <p className="text-xs text-muted-foreground">Slug: {tenant.slug}</p>
+                        <div className="text-xl font-extrabold text-slate-800 dark:text-slate-100">{tenant.slug}</div>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Tenant ID: {tenant.id}</p>
                     </CardContent>
                 </Card>
 
@@ -219,7 +219,7 @@ export default function TenantDetails() {
                         <Database className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl font-bold">{tenant.dbName}</div>
+                        <div className="text-xl font-bold">cannabispos_d4</div>
                         <p className="text-xs text-muted-foreground">PostgreSQL</p>
                     </CardContent>
                 </Card>
