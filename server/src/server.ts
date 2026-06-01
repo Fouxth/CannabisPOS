@@ -38,9 +38,11 @@ const PORT = Number(process.env.PORT) || 3000;
 socketService.init(httpServer);
 
 // Middleware
+const allowedOrigin = process.env.CORS_ORIGIN || 'https://cannabis-4th.vercel.app';
+
 app.use(
     cors({
-        origin: true,
+        origin: allowedOrigin,
         credentials: true,
     })
 );
