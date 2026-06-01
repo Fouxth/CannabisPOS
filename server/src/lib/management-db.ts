@@ -10,4 +10,4 @@ if (process.env.NODE_ENV !== 'production') {
     global.managementPrisma = managementPrisma;
 }
 
-export type { Tenant, Domain, Prisma } from '../generated/management';
+export type { Tenant, Prisma } from '../generated/management';

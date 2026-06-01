@@ -28,13 +28,13 @@ export const prisma = basePrisma.$extends({
                         args.update = { ...args.update, tenantId };
                     }
 
-                    // 2. Filter read/modify operations by tenantId
                     if ([
                         'findFirst', 'findFirstOrThrow', 'findMany', 'findUnique', 
                         'findUniqueOrThrow', 'update', 'updateMany', 'delete', 
                         'deleteMany', 'count', 'aggregate', 'groupBy'
                     ].includes(operation)) {
-                        args.where = { ...args.where, tenantId };
+                        const anyArgs = args as any;
+                        anyArgs.where = { ...anyArgs.where, tenantId };
                     }
                 }
 
