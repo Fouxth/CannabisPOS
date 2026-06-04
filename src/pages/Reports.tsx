@@ -237,8 +237,140 @@ export default function Reports() {
             { icon: '🚫', text: 'ละเลยสินค้าที่ขายไม่ดีโดยไม่วิเคราะห์ต้นทุน' },
         ];
 
-        return { score, scoreLabel, recs, expenseRatio, avgBasket, topProductRevShare, totalTransactions, dos, donts };
-    }, [reportsData]);
+        // --- 1. ABC Inventory Classification ---
+        const sortedProductsForABC = [...topProducts].sort((a, b) => b.revenue - a.revenue);
+        let cumulativeRevenue = 0;
+        const abcCategorized = sortedProductsForABC.map((p) => {
+            cumulativeRevenue += p.revenue;
+            const percentage = totalRevenue > 0 ? (cumulativeRevenue / totalRevenue) * 100 : 0;
+            let abcClass: 'A' | 'B' | 'C' = 'C';
+            if (percentage <= 80) abcClass = 'A';
+            else if (percentage <= 95) abcClass = 'B';
+            return {
+                productId: p.product.id,
+                abcClass,
+            };
+        });
+        const abcMap = new Map(abcCategorized.map((item) => [item.productId, item.abcClass]));
+
+        // --- 2. Sales Velocity & Runway ---
+        let daysInPeriod = 30;
+        if (dateRange === 'today') daysInPeriod = 1;
+        else if (dateRange === 'week') daysInPeriod = 7;
+        else if (dateRange === 'year') daysInPeriod = 365;
+
+        const topProductsWithMetrics = topProducts.map((p) => {
+            const dailyVelocity = p.quantity / daysInPeriod;
+            const stockRunway = dailyVelocity > 0 ? p.product.stock / dailyVelocity : 999;
+            const abcClass = abcMap.get(p.product.id) || 'C';
+            return {
+                ...p,
+                dailyVelocity,
+                stockRunway,
+                abcClass,
+            };
+        });
+
+        // --- 3. Linear Regression Sales Forecasting ---
+        const monthlyBreakdown = reportsData.monthlyBreakdown || [];
+        let forecastNextMonth = { revenue: totalRevenue * 1.05, profit: reportsData.totalProfit * 1.05, growthRate: 5 };
+        if (monthlyBreakdown.length >= 2) {
+            const n = monthlyBreakdown.length;
+            let sumX = 0, sumY_rev = 0, sumY_prof = 0;
+            let sumXX = 0, sumXY_rev = 0, sumXY_prof = 0;
+            for (let i = 0; i < n; i++) {
+                sumX += i;
+                sumXX += i * i;
+                sumY_rev += monthlyBreakdown[i].revenue;
+                sumXY_rev += i * monthlyBreakdown[i].revenue;
+                sumY_prof += monthlyBreakdown[i].profit;
+                sumXY_prof += i * monthlyBreakdown[i].profit;
+            }
+            const m_rev = (n * sumXY_rev - sumX * sumY_rev) / (n * sumXX - sumX * sumX);
+            const c_rev = (sumY_rev - m_rev * sumX) / n;
+
+            const m_prof = (n * sumXY_prof - sumX * sumY_prof) / (n * sumXX - sumX * sumX);
+            const c_prof = (sumY_prof - m_prof * sumX) / n;
+
+            const projectedRev = Math.max(0, m_rev * n + c_rev);
+            const projectedProf = Math.max(0, m_prof * n + c_prof);
+            const lastMonthRev = monthlyBreakdown[n - 1].revenue;
+            const growthRate = lastMonthRev > 0 ? ((projectedRev - lastMonthRev) / lastMonthRev) * 100 : 0;
+
+            forecastNextMonth = {
+                revenue: projectedRev,
+                profit: projectedProf,
+                growthRate,
+            };
+        }
+
+        // --- 4. Break-Even Point (BEP) Calculator ---
+        const cogsRatio = totalRevenue > 0 ? totalCost / totalRevenue : 0;
+        const contributionMarginRatio = 1 - cogsRatio;
+        const bepMonthly = contributionMarginRatio > 0 ? totalExpenses / contributionMarginRatio : 0;
+        const bepStatus = totalRevenue >= bepMonthly
+            ? { isCovered: true, diff: totalRevenue - bepMonthly }
+            : { isCovered: false, diff: bepMonthly - totalRevenue };
+
+        // --- 5. Peak Hours & Traffic Analytics ---
+        const ordersByHour = reportsData.ordersByHour || [];
+        let peakHour = { hour: 17, sales: 0 };
+        ordersByHour.forEach((h) => {
+            if (h.sales > peakHour.sales) {
+                peakHour = { hour: h.hour, sales: h.sales };
+            }
+        });
+
+        const weeklySales = reportsData.weeklySales || [];
+        let peakDay = { day: 'วันศุกร์', sales: 0 };
+        weeklySales.forEach((d) => {
+            if (d.sales > peakDay.sales) {
+                peakDay = { day: d.day, sales: d.sales };
+            }
+        });
+
+        // --- 6. Dead Stock & Low Stock Advice ---
+        const deadStockList = reportsData.deadStock || [];
+        const deadStockCapitalTied = deadStockList.reduce((sum, item) => sum + (item.valueAtCost || 0), 0);
+        const deadStockRecoverable = deadStockList.reduce((sum, item) => sum + ((item.valueAtCost || 0) * (1 - (item.suggestedDiscount || 20) / 100)), 0);
+
+        const lowStockProductsList = reportsData.lowStockProducts || [];
+        const reorderAdvice = lowStockProductsList.map((prod) => {
+            const foundTop = topProducts.find((tp) => tp.product.id === prod.id);
+            const dailyVel = foundTop ? foundTop.quantity / daysInPeriod : 0.5;
+            const rop = Math.ceil(dailyVel * 3) + 5;
+            const recommendedQty = Math.ceil(dailyVel * 30);
+            return {
+                id: prod.id,
+                name: prod.name,
+                currentStock: prod.stock,
+                rop,
+                recommendedQty,
+            };
+        });
+
+        return {
+            score,
+            scoreLabel,
+            recs,
+            expenseRatio,
+            avgBasket,
+            topProductRevShare,
+            totalTransactions,
+            dos,
+            donts,
+            topProductsWithMetrics,
+            forecastNextMonth,
+            bepMonthly,
+            bepStatus,
+            peakHour,
+            peakDay,
+            deadStockCapitalTied,
+            deadStockRecoverable,
+            deadStockList,
+            reorderAdvice
+        };
+    }, [reportsData, dateRange]);
 
     if (isLoading) {
         return (
@@ -405,6 +537,165 @@ export default function Reports() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* Advanced Retail Science Tools */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {/* Linear Regression Forecast Card */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <span className="text-xl">🔮</span>
+                                    AI คาดการณ์แนวโน้มเดือนหน้า
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">คำนวณแบบสถิติถดถอยเชิงเส้น (Linear Regression)</p>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 rounded-lg bg-background border">
+                                        <p className="text-xs text-muted-foreground">คาดการณ์ยอดขาย</p>
+                                        <p className="text-lg font-bold text-primary mt-1">฿{formatCurrency(aiInsights?.forecastNextMonth.revenue ?? 0)}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-background border">
+                                        <p className="text-xs text-muted-foreground">คาดการณ์กำไรสุทธิ</p>
+                                        <p className="text-lg font-bold text-emerald-600 mt-1">฿{formatCurrency(aiInsights?.forecastNextMonth.profit ?? 0)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+                                    <span>📊</span>
+                                    <span>
+                                        แนวโน้มการเติบโตคาดการณ์:{" "}
+                                        <span className={`font-bold ${aiInsights && aiInsights.forecastNextMonth.growthRate >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                            {aiInsights && aiInsights.forecastNextMonth.growthRate >= 0 ? '+' : ''}
+                                            {aiInsights?.forecastNextMonth.growthRate.toFixed(1)}%
+                                        </span>{" "}
+                                        เมื่อเทียบกับเดือนปัจจุบัน
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Break-Even Calculator Card */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <span className="text-xl">⚖️</span>
+                                    วิเคราะห์จุดคุ้มทุน (Break-Even)
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">เปรียบเทียบระหว่างรายได้คงที่กับค่าใช้จ่ายและต้นทุนแปรผัน</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="flex justify-between items-center p-2 rounded bg-background border text-sm">
+                                    <span className="text-muted-foreground">จุดคุ้มทุนรายเดือน:</span>
+                                    <span className="font-semibold">฿{formatCurrency(aiInsights?.bepMonthly ?? 0)}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-2 rounded bg-background border text-sm">
+                                    <span className="text-muted-foreground">ยอดขายจริงปัจจุบัน:</span>
+                                    <span className="font-semibold text-primary">฿{formatCurrency(reportsData.totalRevenue)}</span>
+                                </div>
+                                {aiInsights?.bepStatus.isCovered ? (
+                                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs font-medium">
+                                        🎉 ร้านดำเนินกิจการพ้นจุดคุ้มทุนแล้ว! ยอดขายเกินเป้าขั้นต่ำมา ฿{formatCurrency(aiInsights.bepStatus.diff)}
+                                    </div>
+                                ) : (
+                                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-xs font-medium">
+                                        ⚠️ ยังไม่ถึงจุดคุ้มทุน! ต้องการยอดขายเพิ่มอีก ฿{formatCurrency(aiInsights?.bepStatus.diff ?? 0)} เพื่อให้พ้นจุดขาดทุน
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Smart Inventory & Capital Recovery Cards */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {/* Reorder Advisor */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <span className="text-xl">🔔</span>
+                                    จุดสั่งซื้อสต็อกที่เหมาะสม (Reorder Points)
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">คำนวณจากความเร็วการขายรายวัน (Sales Velocity) เพื่อเลี่ยงสินค้าขาดสต็อก</p>
+                            </CardHeader>
+                            <CardContent className="space-y-2 max-h-[220px] overflow-y-auto">
+                                {aiInsights?.reorderAdvice && aiInsights.reorderAdvice.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground text-center py-6">ไม่มีสินค้าแจ้งเตือนสต็อกต่ำ</p>
+                                ) : (
+                                    aiInsights?.reorderAdvice.map((item, index) => (
+                                        <div key={index} className="flex justify-between items-center p-2 rounded-lg bg-background border text-xs">
+                                            <div>
+                                                <p className="font-semibold">{item.name}</p>
+                                                <p className="text-[10px] text-muted-foreground">สต็อกปัจจุบัน: {item.currentStock} | จุดวิกฤต (ROP): {item.rop} ชิ้น</p>
+                                            </div>
+                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                                สั่งเพิ่ม: +{item.recommendedQty} ชิ้น
+                                            </Badge>
+                                        </div>
+                                    ))
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Dead Stock Recovery */}
+                        <Card className="glass">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <span className="text-xl">💰</span>
+                                    การกู้คืนทุนสินค้าค้างสต็อก (Dead Stock)
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">สินค้าไม่มีการเคลื่อนไหวเกิน 30 วัน ดึงทุนจมกลับมาเป็นกระแสเงินสด</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3 text-xs">
+                                    <div className="p-2 rounded bg-background border text-center">
+                                        <p className="text-muted-foreground">เงินทุนจมทั้งหมด</p>
+                                        <p className="text-base font-bold text-red-600 mt-1">฿{formatCurrency(aiInsights?.deadStockCapitalTied ?? 0)}</p>
+                                    </div>
+                                    <div className="p-2 rounded bg-background border text-center">
+                                        <p className="text-muted-foreground">คาดการณ์เงินสดดึงกลับได้</p>
+                                        <p className="text-base font-bold text-emerald-600 mt-1">฿{formatCurrency(aiInsights?.deadStockRecoverable ?? 0)}</p>
+                                    </div>
+                                </div>
+                                {aiInsights && aiInsights.deadStockList.length > 0 ? (
+                                    <div className="p-3 rounded bg-orange-500/10 border border-orange-500/20 text-orange-700 dark:text-orange-400 text-xs">
+                                        💡 แนะนำทำโปรโมชันลดราคาเฉลี่ย {Math.ceil(aiInsights.deadStockList[0]?.suggestedDiscount ?? 20)}% เพื่อกู้คืนกระแสเงินสดจากสินค้า <b>{aiInsights.deadStockList[0]?.productName}</b>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground text-center py-2">ยินดีด้วย! ไม่มีเงินจมจากสินค้าค้างสต็อก</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Staffing & Traffic Optimizer */}
+                    <Card className="glass">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <span className="text-xl">👥</span>
+                                การจัดการพนักงานและช่วงเวลาขายดี (Traffic Advisor)
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground">วิเคราะห์ช่วงเวลาที่ลูกค้าใช้บริการมากที่สุด เพื่อประหยัดต้นทุนแรงงาน</p>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 md:grid-cols-2 text-xs">
+                            <div className="p-3 rounded-lg bg-background border space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">⏰</span>
+                                    <span className="font-semibold">ชั่วโมงขายดีที่สุด: ช่วง {aiInsights?.peakHour.hour}:00 น.</span>
+                                </div>
+                                <p className="text-muted-foreground leading-relaxed">
+                                    ควรเพิ่มพนักงานจัดเตรียมหรือพนักงานขายหน้าร้านในช่วงชั่วโมงนี้เพื่อเร่งความเร็วการชำระเงินและบริการลูกค้า ป้องกันการรอคิวบิลค้าง
+                                </p>
+                            </div>
+                            <div className="p-3 rounded-lg bg-background border space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">📅</span>
+                                    <span className="font-semibold">วันขายดีที่สุดในสัปดาห์: {aiInsights?.peakDay.day}</span>
+                                </div>
+                                <p className="text-muted-foreground leading-relaxed">
+                                    แนะนำให้จัดโปรแกรมพนักงานเสริมเพิ่มขึ้นเฉพาะในวันดังกล่าว และตรวจเช็คสต็อกสินค้าให้พร้อมขายก่อนเริ่มวันเพื่อรองรับ Traffic สูงสุด
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Smart Recommendations */}
                     <Card className="glass">
@@ -612,20 +903,44 @@ export default function Reports() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>สินค้า</TableHead>
-                                        <TableHead className="text-right">จำนวนขาย</TableHead>
-                                        <TableHead className="text-right">รายได้</TableHead>
+                                        <TableHead className="text-center">กลุ่มสินค้า (ABC)</TableHead>
+                                        <TableHead className="text-right">ความเร็วขาย (ต่อวัน)</TableHead>
+                                        <TableHead className="text-right">ระยะเวลาขายหมด (Runway)</TableHead>
+                                        <TableHead className="text-right">จำนวนขายรวม</TableHead>
+                                        <TableHead className="text-right">รายได้รวม</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {(reportsData.topProducts || []).slice(0, 5).map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product.name}</TableCell>
-                                            <TableCell className="text-right">{item.quantity}</TableCell>
-                                            <TableCell className="text-right text-emerald-600">
-                                                ฿{formatCurrency(item.revenue)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {(aiInsights?.topProductsWithMetrics || []).slice(0, 5).map((item, index) => {
+                                        const runwayLabel = item.stockRunway >= 999 
+                                            ? 'ไม่จำกัด' 
+                                            : item.stockRunway <= 3 
+                                            ? `วิกฤต (${Math.ceil(item.stockRunway)} วัน)` 
+                                            : `${Math.ceil(item.stockRunway)} วัน`;
+                                        const abcColorMap: Record<'A' | 'B' | 'C', string> = {
+                                            A: 'bg-yellow-500/20 text-yellow-700 border-yellow-500 font-bold',
+                                            B: 'bg-blue-500/20 text-blue-700 border-blue-500',
+                                            C: 'bg-gray-500/20 text-gray-700 border-gray-500'
+                                        };
+                                        return (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-medium">{item.product.name}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant="outline" className={abcColorMap[item.abcClass]}>
+                                                        Class {item.abcClass}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">{item.dailyVelocity.toFixed(1)} ชิ้น/วัน</TableCell>
+                                                <TableCell className={`text-right ${item.stockRunway <= 3 ? 'text-red-500 font-semibold' : ''}`}>
+                                                    {runwayLabel}
+                                                </TableCell>
+                                                <TableCell className="text-right">{item.quantity}</TableCell>
+                                                <TableCell className="text-right text-emerald-600">
+                                                    ฿{formatCurrency(item.revenue)}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                             </div>
