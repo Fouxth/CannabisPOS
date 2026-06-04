@@ -95,7 +95,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                   className={cn(
                     'flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-all duration-200 group relative',
                     isActive
-                      ? 'bg-primary/10 text-primary dark:bg-primary/15 font-semibold shadow-none'
+                      ? 'bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))] dark:bg-[hsl(var(--primary)/0.15)] font-semibold shadow-none'
                       : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                   )}
                 >
@@ -106,7 +106,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                   <item.icon className={cn(
                     'flex-shrink-0 transition-transform duration-200',
                     'w-[18px] h-[18px]',
-                    isActive ? 'text-primary' : 'group-hover:scale-110'
+                    isActive ? 'text-[hsl(var(--primary))]' : 'group-hover:scale-110'
                   )} />
                   {!collapsed && (
                     <span className="font-medium text-sm whitespace-nowrap">{item.label}</span>
