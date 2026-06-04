@@ -116,7 +116,7 @@ export default function Dashboard() {
         {statCards.map((stat, index) => (
           <Card
             key={stat.title}
-            className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : ''}`}
+            className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:bg-secondary/20 transition-all duration-300' : ''}`}
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => stat.clickable && setShowSalesDetail(true)}
           >
