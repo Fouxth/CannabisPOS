@@ -79,8 +79,8 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
         ]);
 
         const prefix = posSettings.invoicePrefix || 'POS';
-        const saleNumber = generateDocumentNumber(prefix);
         const billNumber = generateDocumentNumber(prefix);
+        const saleNumber = billNumber;
 
         // Calculate todayStart based on dayClosingTime
         const now = new Date();
