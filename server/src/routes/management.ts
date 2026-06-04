@@ -495,6 +495,30 @@ router.delete('/tenants/:id', async (req, res) => {
             return res.status(404).json({ message: 'Tenant not found' });
         }
 
+        // Delete all data associated with this tenant from the shared tenant DB
+        const tenantPrisma = await getTenantPrisma(id);
+        try {
+            await tenantPrisma.$transaction([
+                tenantPrisma.auditLog.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.promotion.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.notification.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.expense.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.systemSetting.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.paymentMethod.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.stockMovement.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.billItem.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.bill.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.saleItem.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.sale.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.product.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.category.deleteMany({ where: { tenantId: id } }),
+                tenantPrisma.user.deleteMany({ where: { tenantId: id } }),
+            ]);
+            console.log(`[Provisioning] ✅ All database records for tenant ${id} deleted`);
+        } catch (err) {
+            console.error(`[Provisioning] ❌ Failed to clean up tenant data for ${id}:`, err);
+        }
+
         // Delete tenant record (domains will cascade delete)
         await managementPrisma.tenant.delete({
             where: { id },
