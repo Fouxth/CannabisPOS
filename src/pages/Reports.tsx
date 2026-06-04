@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { api } from '@/lib/api';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MonthPicker } from '@/components/MonthPicker';
+import { YearPicker } from '@/components/YearPicker';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfYear, endOfYear } from 'date-fns';
 
 const formatCurrency = (value: number) => {
@@ -58,7 +59,7 @@ export default function Reports() {
         } else if (dateRange === 'month') {
             return { startDate: startOfMonth(selectedMonth).toISOString(), endDate: endOfMonth(selectedMonth).toISOString() };
         } else {
-            return { startDate: startOfYear(now).toISOString(), endDate: endOfYear(now).toISOString() };
+            return { startDate: startOfYear(selectedMonth).toISOString(), endDate: endOfYear(selectedMonth).toISOString() };
         }
     }, [dateRange, selectedMonth]);
 
@@ -400,6 +401,9 @@ export default function Reports() {
                 <div className="flex flex-col sm:flex-row gap-3 items-center">
                     {dateRange === 'month' && (
                         <MonthPicker currentDate={selectedMonth} onDateChange={setSelectedMonth} />
+                    )}
+                    {dateRange === 'year' && (
+                        <YearPicker currentDate={selectedMonth} onDateChange={setSelectedMonth} />
                     )}
                     <Tabs value={dateRange} onValueChange={(v) => setDateRange(v as any)} className="w-full sm:w-auto">
                         <TabsList className="grid w-full grid-cols-2">
@@ -866,12 +870,13 @@ export default function Reports() {
                                         <YAxis axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`} />
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: 'rgba(var(--card), 0.8)',
-                                                backdropFilter: 'blur(12px)',
-                                                border: '1px solid hsl(var(--border) / 0.5)',
-                                                borderRadius: '12px',
-                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                                                backgroundColor: 'hsl(var(--popover))',
+                                                border: '1px solid hsl(var(--border))',
+                                                borderRadius: '8px',
+                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                                             }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                                             formatter={(value) => `฿${formatCurrency(Number(value))}`}
                                         />
                                         <Legend />
@@ -907,12 +912,13 @@ export default function Reports() {
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor: 'rgba(var(--card), 0.8)',
-                                                backdropFilter: 'blur(12px)',
-                                                border: '1px solid hsl(var(--border) / 0.5)',
-                                                borderRadius: '12px',
-                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                                                backgroundColor: 'hsl(var(--popover))',
+                                                border: '1px solid hsl(var(--border))',
+                                                borderRadius: '8px',
+                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                                             }}
+                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                                             formatter={(value) => `฿${formatCurrency(Number(value))}`}
                                         />
                                     </PieChart>
@@ -947,9 +953,9 @@ export default function Reports() {
                                             ? `วิกฤต (${Math.ceil(item.stockRunway)} วัน)` 
                                             : `${Math.ceil(item.stockRunway)} วัน`;
                                         const abcColorMap: Record<'A' | 'B' | 'C', string> = {
-                                            A: 'bg-yellow-500/20 text-yellow-700 border-yellow-500 font-bold',
-                                            B: 'bg-blue-500/20 text-blue-700 border-blue-500',
-                                            C: 'bg-gray-500/20 text-gray-700 border-gray-500'
+                                            A: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500 font-bold',
+                                            B: 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500',
+                                            C: 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500'
                                         };
                                         return (
                                             <TableRow key={index}>

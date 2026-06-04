@@ -393,6 +393,14 @@ export default function TenantDetails() {
                                 />
                                 <YAxis tickFormatter={(value) => `฿${value.toLocaleString()}`} />
                                 <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--popover))',
+                                        border: '1px solid hsl(var(--border))',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                    }}
+                                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                    labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                                     formatter={(value: any) => [`฿${value.toLocaleString()}`, 'Revenue']}
                                     labelFormatter={(label) => new Date(label).toLocaleDateString('th-TH')}
                                 />

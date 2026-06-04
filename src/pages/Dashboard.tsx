@@ -267,12 +267,13 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(var(--card), 0.8)',
-                      backdropFilter: 'blur(12px)',
-                      border: '1px solid hsl(var(--border) / 0.5)',
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                     }}
+                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                     formatter={(value: number) => [formatCurrency(value), 'ยอดขาย']}
                     labelFormatter={(hour) => `เวลา ${hour}:00 น.`}
                   />
@@ -324,12 +325,13 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(var(--card), 0.8)',
-                      backdropFilter: 'blur(12px)',
-                      border: '1px solid hsl(var(--border) / 0.5)',
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                      backgroundColor: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                     }}
+                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
                     formatter={(value: number, name: string) => [
                       name === 'quantity' ? `${value} กรัม` : formatCurrency(value),
                       name === 'quantity' ? 'จำนวน' : 'รายได้'
