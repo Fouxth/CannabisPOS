@@ -145,7 +145,6 @@ router.put('/:id', async (req, res) => {
                 data: {
                     // Sync only relevant fields to central DB
                     ...(data.username && { username: data.username }),
-                    ...(data.fullName && { fullName: data.fullName }),
                     ...(data.password && { password: data.password }),
                     ...(data.isActive !== undefined && { isActive: data.isActive }),
                     // Note: Management DB might not have all fields like nickname/phone/avatarUrl if schema differs
