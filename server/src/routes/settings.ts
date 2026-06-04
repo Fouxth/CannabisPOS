@@ -29,11 +29,21 @@ router.put('/:section', async (req, res) => {
             return res.status(400).json({ message: 'Invalid settings section' });
         }
         const value = req.body ?? {};
-        const setting = await req.tenantPrisma!.systemSetting.upsert({
-            where: { key: section },
-            update: { value },
-            create: { key: section, value },
+        const tenantId = req.tenantId || 'default';
+        const exists = await req.tenantPrisma!.systemSetting.findFirst({
+            where: { key: section }
         });
+        let setting;
+        if (exists) {
+            setting = await req.tenantPrisma!.systemSetting.update({
+                where: { key_tenantId: { key: section, tenantId } },
+                data: { value }
+            });
+        } else {
+            setting = await req.tenantPrisma!.systemSetting.create({
+                data: { key: section, value }
+            });
+        }
         res.json(setting.value);
     } catch (error) {
         console.error('Update settings error', error);

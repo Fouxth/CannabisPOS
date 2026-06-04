@@ -150,12 +150,25 @@ router.post('/restore', requirePermission('MANAGE_BACKUP'), async (req, res) => 
 
             // Restore settings
             if (restoreSettings && backup.systemSettings && Array.isArray(backup.systemSettings)) {
+                const tenantId = req.tenantId || 'default';
                 for (const setting of backup.systemSettings) {
-                    await tx.systemSetting.upsert({
-                        where: { key: setting.key },
-                        update: { value: setting.value },
-                        create: setting,
+                    const exists = await tx.systemSetting.findFirst({
+                        where: { key: setting.key }
                     });
+                    if (exists) {
+                        await tx.systemSetting.update({
+                            where: { key_tenantId: { key: setting.key, tenantId } },
+                            data: { value: setting.value }
+                        });
+                    } else {
+                        await tx.systemSetting.create({
+                            data: {
+                                key: setting.key,
+                                value: setting.value,
+                                tenantId
+                            }
+                        });
+                    }
                 }
                 restored.systemSettings = backup.systemSettings.length;
             }

@@ -276,12 +276,13 @@ enum PaymentType {
 }
 
 model SystemSetting {
-  key       String   @id
+  key       String
   tenantId  String   @default("default")
   value     Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@id([key, tenantId])
   @@index([tenantId])
   @@map("system_settings")
 }

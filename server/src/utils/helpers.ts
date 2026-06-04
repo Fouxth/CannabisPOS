@@ -67,7 +67,7 @@ export const decimalToNumber = (value: DecimalValue) => {
 };
 
 export const getSettingValue = async <K extends SettingKey>(key: K, prisma: PrismaClient) => {
-    const setting = await prisma.systemSetting.findUnique({
+    const setting = await prisma.systemSetting.findFirst({
         where: { key },
     });
     return (setting?.value as (typeof DEFAULT_SETTINGS)[K]) ?? DEFAULT_SETTINGS[key];

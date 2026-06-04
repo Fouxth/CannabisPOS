@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
     try {
         const [products, systemSettings] = await Promise.all([
             req.tenantPrisma!.product.findMany({ include: { category: true } }),
-            req.tenantPrisma!.systemSetting.findUnique({ where: { key: 'store' } }), // Use 'store' key
+            req.tenantPrisma!.systemSetting.findFirst({ where: { key: 'store' } }), // Use 'store' key
         ]);
 
         const config = (systemSettings?.value as any) || {};

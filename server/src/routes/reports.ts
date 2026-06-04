@@ -10,7 +10,7 @@ router.get('/overview', async (req, res) => {
         const [salesWeekQuery, salesInRangeQuery, saleItemsInRangeQuery, productsQuery, ordersTodayQuery, expensesInRangeQuery, systemSettingsQuery] = await Promise.all([
             req.tenantPrisma!.sale.findMany({ where: { createdAt: { gte: startOfNDaysAgo(6) } }, include: { items: true } }), // Temp trigger
             null, null, null, null, null,
-            req.tenantPrisma!.systemSetting.findUnique({ where: { key: 'store' } }),
+            req.tenantPrisma!.systemSetting.findFirst({ where: { key: 'store' } }),
         ]);
 
         const config = (systemSettingsQuery?.value as any) || {};
