@@ -332,7 +332,7 @@ export default function POS() {
             className={cn(
               'gap-3 pb-4',
               viewMode === 'grid'
-                ? 'grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))]'
+                ? 'grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))]'
                 : 'flex flex-col'
             )}
           >
@@ -355,16 +355,16 @@ export default function POS() {
                 >
                   {viewMode === 'grid' ? (
                     <>
-                      <CardContent className="p-3 sm:p-4 h-full flex flex-col items-center text-center justify-between">
+                      <CardContent className="p-2.5 sm:p-3 h-full flex flex-col items-center text-center justify-between">
                         <div className="w-full">
                           {/* Name */}
-                          <p className="font-semibold text-sm sm:text-lg line-clamp-1 mb-1 sm:mb-2">{product.name}</p>
+                          <p className="font-semibold text-xs sm:text-sm line-clamp-none min-h-[2.5rem] flex items-center justify-center mb-1 sm:mb-1.5 leading-tight">{product.name}</p>
 
                           {/* Category and Badges */}
-                          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+                          <div className="flex flex-wrap justify-center gap-1 sm:gap-1.5 mb-1.5 sm:mb-2">
                             {category && (
                               <div
-                                className="px-3 py-0.5 rounded-full text-[12px] border font-medium transition-colors"
+                                className="px-2 py-0.5 rounded-full text-[10px] border font-medium transition-colors"
                                 style={{
                                   backgroundColor: `${category.color}15`,
                                   color: category.color,
@@ -375,7 +375,7 @@ export default function POS() {
                               </div>
                             )}
                             {isLowStock && !isOutOfStock && (
-                              <Badge variant="destructive" className="text-[10px] h-6 px-2 font-normal rounded-full">
+                              <Badge variant="destructive" className="text-[9px] h-5 px-1.5 font-normal rounded-full">
                                 ใกล้หมด
                               </Badge>
                             )}
@@ -383,11 +383,11 @@ export default function POS() {
                         </div>
 
                         {/* Price */}
-                        <div className="w-full py-1">
-                          <div className="bg-primary/10 border border-primary/20 rounded-xl py-1.5 sm:py-2 px-3 sm:px-4 mb-2 inline-block w-full max-w-[180px]">
-                            <p className="text-base sm:text-xl font-bold text-primary">
+                        <div className="w-full py-0.5">
+                          <div className="bg-primary/10 border border-primary/20 rounded-xl py-1 sm:py-1.5 px-2.5 sm:px-3 mb-1.5 inline-block w-full max-w-[150px]">
+                            <p className="text-sm sm:text-base font-bold text-primary">
                               ฿{formatCurrency(product.price)}
-                              <span className="text-xs sm:text-sm font-normal text-primary/70 ml-1">/{product.stockUnit}</span>
+                              <span className="text-[10px] sm:text-xs font-normal text-primary/70 ml-1">/{product.stockUnit}</span>
                             </p>
                           </div>
                         </div>
@@ -395,13 +395,13 @@ export default function POS() {
                         {/* Stock */}
                         <div className="w-full text-center">
                           <p className={cn(
-                            "text-xs sm:text-sm font-medium",
+                            "text-[11px] sm:text-xs font-medium",
                             isLowStock ? "text-red-500" : "text-muted-foreground"
                           )}>
                             คงเหลือ: {product.stock} {product.stockUnit}
                           </p>
                           {product.promoQuantity && (
-                            <p className="text-[10px] text-orange-500 mt-1">
+                            <p className="text-[9px] text-orange-500 mt-0.5">
                               โปร: {product.promoQuantity} {product.stockUnit} = ฿{product.promoPrice}
                             </p>
                           )}
