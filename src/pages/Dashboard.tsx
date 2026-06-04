@@ -410,9 +410,9 @@ export default function Dashboard() {
                   เฉลี่ย {formatCurrency(dashboard.weekSales / 7)}/วัน
                 </p>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 p-6 border border-accent/20">
+              <div className="rounded-xl bg-gradient-to-br from-info/20 to-info/5 p-6 border border-info/20">
                 <p className="text-sm text-muted-foreground mb-2">ยอดขายเดือนนี้</p>
-                <p className="text-2xl font-bold font-display text-accent">
+                <p className="text-2xl font-bold font-display text-info">
                   {formatCurrency(dashboard.monthSales)}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
