@@ -245,27 +245,33 @@ export default function Dashboard() {
                 <AreaChart data={dashboard.salesByHour}>
                   <defs>
                     <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.35)" />
                   <XAxis
                     dataKey="hour"
                     tickFormatter={(hour) => `${hour}:00`}
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
+                    fontSize={11}
+                    axisLine={false}
+                    tickLine={false}
                   />
                   <YAxis
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
+                    fontSize={11}
                     tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`}
+                    axisLine={false}
+                    tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      backgroundColor: 'rgba(var(--card), 0.8)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid hsl(var(--border) / 0.5)',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
                     }}
                     formatter={(value: number) => [formatCurrency(value), 'ยอดขาย']}
                     labelFormatter={(hour) => `เวลา ${hour}:00 น.`}
@@ -274,8 +280,9 @@ export default function Dashboard() {
                     type="monotone"
                     dataKey="sales"
                     stroke="hsl(var(--primary))"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     fill="url(#salesGradient)"
+                    activeDot={{ r: 5, strokeWidth: 0, fill: "hsl(var(--primary))" }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -297,25 +304,31 @@ export default function Dashboard() {
                   layout="vertical"
                   margin={{ left: 0, right: 20 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.35)" horizontal={false} />
                   <XAxis
                     type="number"
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
+                    fontSize={11}
+                    axisLine={false}
+                    tickLine={false}
                   />
                   <YAxis
                     type="category"
                     dataKey="product.name"
                     stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
+                    fontSize={11}
                     width={100}
                     tickFormatter={(name) => name.length > 12 ? `${name.slice(0, 12)}...` : name}
+                    axisLine={false}
+                    tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
+                      backgroundColor: 'rgba(var(--card), 0.8)',
+                      backdropFilter: 'blur(12px)',
+                      border: '1px solid hsl(var(--border) / 0.5)',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
                     }}
                     formatter={(value: number, name: string) => [
                       name === 'quantity' ? `${value} กรัม` : formatCurrency(value),
@@ -325,7 +338,7 @@ export default function Dashboard() {
                   <Bar
                     dataKey="quantity"
                     fill="hsl(var(--primary))"
-                    radius={[0, 4, 4, 0]}
+                    radius={[0, 6, 6, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>

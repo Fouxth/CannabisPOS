@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { api } from '@/lib/api';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { MonthPicker } from '@/components/MonthPicker';
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfYear, endOfYear } from 'date-fns';
 
@@ -846,19 +846,38 @@ export default function Reports() {
                         {/* Sales Trend */}
                         <Card className="glass">
                             <CardHeader>
-                                <CardTitle>แนวโน้มยอดขาย</CardTitle>
+                                <CardTitle>แนวโน้มยอดขายและกำไร</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ResponsiveContainer width="100%" height={220}>
-                                    <LineChart data={reportsData.monthlyBreakdown || []}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="month" />
-                                        <YAxis />
-                                        <Tooltip formatter={(value) => `฿${formatCurrency(Number(value))}`} />
+                                    <AreaChart data={reportsData.monthlyBreakdown || []}>
+                                        <defs>
+                                            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                                        <XAxis dataKey="month" axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                        <YAxis axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`} />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: 'rgba(var(--card), 0.8)',
+                                                backdropFilter: 'blur(12px)',
+                                                border: '1px solid hsl(var(--border) / 0.5)',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                                            }}
+                                            formatter={(value) => `฿${formatCurrency(Number(value))}`}
+                                        />
                                         <Legend />
-                                        <Line type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2} />
-                                        <Line type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2} />
-                                    </LineChart>
+                                        <Area type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2.5} fill="url(#revenueGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }} />
+                                        <Area type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2.5} fill="url(#profitGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }} />
+                                    </AreaChart>
                                 </ResponsiveContainer>
                             </CardContent>
                         </Card>
@@ -876,7 +895,8 @@ export default function Reports() {
                                             cx="50%"
                                             cy="50%"
                                             labelLine={false}
-                                            label={(entry) => entry.name}
+                                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                            innerRadius={60}
                                             outerRadius={80}
                                             fill="#8884d8"
                                             dataKey="value"
@@ -885,7 +905,16 @@ export default function Reports() {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip formatter={(value) => `฿${formatCurrency(Number(value))}`} />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: 'rgba(var(--card), 0.8)',
+                                                backdropFilter: 'blur(12px)',
+                                                border: '1px solid hsl(var(--border) / 0.5)',
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)'
+                                            }}
+                                            formatter={(value) => `฿${formatCurrency(Number(value))}`}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </CardContent>
