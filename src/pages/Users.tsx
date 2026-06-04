@@ -270,6 +270,7 @@ export default function Users() {
             const form = e.currentTarget;
             const data: Partial<User> & { password?: string } = {
               nickname: (form.elements.namedItem('nickname') as HTMLInputElement).value,
+              fullName: (form.elements.namedItem('fullName') as HTMLInputElement).value,
               username: (form.elements.namedItem('username') as HTMLInputElement).value,
               phone: (form.elements.namedItem('phone') as HTMLInputElement).value || undefined,
               role: (form.elements.namedItem('role') as HTMLSelectElement).value as UserRole,
@@ -282,6 +283,11 @@ export default function Users() {
             handleSave(data);
           }}>
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">ชื่อ-นามสกุล *</Label>
+                <Input id="fullName" name="fullName" defaultValue={editingUser?.fullName} placeholder="กรอกชื่อ-นามสกุลพนักงาน" required />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="nickname">ชื่อเล่น *</Label>
                 <Input id="nickname" name="nickname" defaultValue={editingUser?.nickname} placeholder="กรอกชื่อเล่น" required />
