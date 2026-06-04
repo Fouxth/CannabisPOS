@@ -536,17 +536,51 @@ export default function Settings() {
 
               {smsForm.enabled && (
                 <>
-                  <div className="space-y-2">
-                    <Label htmlFor="lineUserId">LINE User ID (สำหรับรับแจ้งเตือน)</Label>
-                    <Input
-                      id="lineUserId"
-                      value={smsRecipientsText}
-                      onChange={(e) => setSmsRecipientsText(e.target.value)}
-                      placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      ใส่ User ID ของคนที่ต้องการให้แจ้งเตือน (ไม่ใช่ LINE ID ทั่วไป)
-                    </p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="lineUserId">LINE User ID (สำหรับรับแจ้งเตือน)</Label>
+                      <Input
+                        id="lineUserId"
+                        value={smsRecipientsText}
+                        onChange={(e) => setSmsRecipientsText(e.target.value)}
+                        placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        ใส่ User ID ของคนที่ต้องการให้แจ้งเตือน (ไม่ใช่ LINE ID ทั่วไป)
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border bg-card/50 p-5 space-y-4">
+                      <h4 className="font-bold text-sm text-foreground">วิธีการหา LINE User ID</h4>
+                      <div className="grid gap-4 md:grid-cols-3 text-xs leading-relaxed text-muted-foreground">
+                        <div className="md:col-span-2 space-y-2">
+                          <p className="font-semibold text-foreground">ขั้นตอนการรับรหัส:</p>
+                          <ol className="list-decimal pl-4 space-y-1.5">
+                            <li>เพิ่มเพื่อน LINE Bot LINE ID: <strong className="text-foreground">@501vabp</strong> หรือสแกน QR Code ด้านข้าง</li>
+                            <li>แชทหาบอทแล้วพิมพ์คำว่า <strong className="text-foreground">my id</strong> หรือ <strong className="text-foreground">user id</strong> แล้วกดส่ง</li>
+                            <li>บอทจะตอบกลับมาเป็นรหัสเฉพาะตัว เช่น <strong className="text-foreground">Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</strong></li>
+                            <li>คัดลอกรหัสดังกล่าวมาใส่ในช่องกรอกด้านบนแล้วกดบันทึก</li>
+                          </ol>
+                        </div>
+                        <div className="flex flex-col items-center justify-center border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-4">
+                          <div className="text-center space-y-2">
+                            <p className="font-semibold text-foreground text-[10px] uppercase tracking-wider">สแกนเพื่อเพิ่มเพื่อน</p>
+                            {/* Light theme QR code */}
+                            <img 
+                              src="https://qr-official.line.me/gs/M_501vabpf_GW.png" 
+                              alt="LINE @501vabp QR Code Light" 
+                              className="h-28 w-28 object-contain rounded-xl border bg-white p-1 block dark:hidden"
+                            />
+                            {/* Dark theme QR code */}
+                            <img 
+                              src="https://qr-official.line.me/gs/M_501vabpf_BW.png" 
+                              alt="LINE @501vabp QR Code Dark" 
+                              className="h-28 w-28 object-contain rounded-xl border bg-black p-1 hidden dark:block"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <Separator />
