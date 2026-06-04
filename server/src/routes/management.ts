@@ -398,7 +398,7 @@ router.post('/tenants', async (req, res) => {
                 username,
                 password: hashedPassword,
                 fullName,
-                employeeCode: 'OWN001',
+                employeeCode: `OWN-${slug.toUpperCase()}-001`,
                 role: 'OWNER',
                 isActive: true
             }
