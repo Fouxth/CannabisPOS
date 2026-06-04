@@ -107,7 +107,7 @@ router.post('/line-webhook', async (req, res) => {
         for (const event of events) {
             if (event.type === 'message' && event.message.type === 'text') {
                 const text = event.message.text.trim().toLowerCase();
-                if (text === 'id' || text === 'check') {
+                if (text.includes('id') || text.includes('check') || text.includes('ไอดี')) {
                     const userId = event.source.userId;
                     const replyToken = event.replyToken;
 
