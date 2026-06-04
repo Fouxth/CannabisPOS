@@ -164,12 +164,10 @@ router.get('/overview', async (req, res) => {
             }));
 
         // Calculate profit
-        let totalRevenue = 0;
+        const totalRevenue = salesInRange.reduce((sum, sale) => sum + decimalToNumber(sale.totalAmount), 0);
         let totalCost = 0;
         saleItemsInRange.forEach((item) => {
-            const revenue = decimalToNumber(item.total);
             const cost = item.product ? decimalToNumber(item.product.cost) * item.quantity : 0;
-            totalRevenue += revenue;
             totalCost += cost;
         });
         const totalProfit = totalRevenue - totalCost;
