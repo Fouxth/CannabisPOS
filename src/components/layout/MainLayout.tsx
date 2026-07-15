@@ -54,7 +54,7 @@ export function MainLayout() {
       {/* Main Content */}
       <div
         className={cn(
-          'transition-all duration-300',
+          'transition-[margin-left] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] contain-layout',
           'lg:ml-[240px]',
           sidebarCollapsed && 'lg:ml-[70px]'
         )}
@@ -76,14 +76,14 @@ export function MainLayout() {
                 key={item.path}
                 to={item.path}
                 className={cn(
-                  'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-all duration-200',
+                  'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-[color] duration-200',
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <div className={cn(
-                  'flex items-center justify-center w-10 h-6 rounded-full transition-all duration-200',
+                  'flex items-center justify-center w-10 h-6 rounded-full transition-[background-color] duration-200',
                   isActive && 'bg-primary/12'
                 )}>
                   <item.icon className={cn('w-5 h-5', isActive && 'stroke-[2.2]')} />

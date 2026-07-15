@@ -269,7 +269,7 @@ export default function POS() {
 
       {/* Products Section */}
       <div className={cn(
-        "flex-1 flex flex-col gap-4 min-w-0 h-full transition-all duration-300",
+        "flex-1 flex flex-col gap-4 min-w-0 h-full",
         mobileTab === 'cart' ? "hidden lg:flex" : "flex"
       )}>
         {/* Categories */}
@@ -336,7 +336,7 @@ export default function POS() {
                 : 'flex flex-col'
             )}
           >
-            {filteredProducts.map((product, index) => {
+            {filteredProducts.map((product) => {
               const isLowStock = product.stock <= product.minStock;
               const isOutOfStock = product.stock === 0;
               const category = categories.find((c) => c.id === product.categoryId) || product.category;
@@ -345,12 +345,11 @@ export default function POS() {
                 <Card
                   key={product.id}
                   className={cn(
-                    'cursor-pointer transition-all duration-200 overflow-hidden animate-scale-in',
+                    'cursor-pointer transition-[box-shadow,border-color,transform] duration-200 active:scale-[0.97] overflow-hidden',
                     'hover:shadow-lg hover:shadow-primary/10 hover:border-primary/50',
                     isOutOfStock && 'opacity-50 pointer-events-none',
                     viewMode === 'list' && 'flex-row'
                   )}
-                  style={{ animationDelay: `${index * 30}ms` }}
                   onClick={() => !isOutOfStock && addToCart(product)}
                 >
                   {viewMode === 'grid' ? (
@@ -396,7 +395,7 @@ export default function POS() {
                         <div className="w-full text-center">
                           <p className={cn(
                             "text-[11px] sm:text-xs font-medium",
-                            isLowStock ? "text-red-500" : "text-muted-foreground"
+                            isLowStock ? "text-warning" : "text-muted-foreground"
                           )}>
                             คงเหลือ: {product.stock} {product.stockUnit}
                           </p>
@@ -438,7 +437,7 @@ export default function POS() {
 
       {/* Cart Section — full-screen overlay on mobile, sidebar on desktop */}
       <Card className={cn(
-        "flex flex-col glass transition-all duration-300",
+        "flex flex-col glass",
         "lg:w-80 xl:w-96",
         // Mobile: fixed full-screen overlay
         mobileTab === 'products'
@@ -495,7 +494,7 @@ export default function POS() {
                         ฿{formatCurrency(item.product.price)} x {item.quantity}
                       </p>
                       {item.product.promoQuantity && item.product.promoPrice && item.quantity >= item.product.promoQuantity && (
-                        <Badge variant="secondary" className="text-[10px] bg-green-500/10 text-green-600 h-5 px-1.5">
+                        <Badge variant="secondary" className="text-[10px] bg-success/10 text-success h-5 px-1.5">
                           โปรโมชัน
                         </Badge>
                       )}

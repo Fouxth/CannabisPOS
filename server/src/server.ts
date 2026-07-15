@@ -37,12 +37,21 @@ const PORT = Number(process.env.PORT) || 3000;
 // Initialize Socket Service
 socketService.init(httpServer);
 
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    next();
+});
+
 // Middleware
-const allowedOrigin = process.env.CORS_ORIGIN || 'https://cannabis-4th.vercel.app';
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(o => o.replace(/"/g, '').trim())
+    : ['https://cannabis-4th.vercel.app', 'http://localhost:8080', 'http://localhost:5173'];
+
+console.log('CORS Allowed Origins:', allowedOrigins);
 
 app.use(
     cors({
-        origin: allowedOrigin,
+        origin: allowedOrigins,
         credentials: true,
     })
 );

@@ -44,6 +44,8 @@
 - **TanStack Query (React Query)**: การจัดการ Data Fetching และ Caching
 - **Zustand**: State Management ที่เบาและรวดเร็ว
 - **Recharts**: การแสดงผลกราฟสถิติที่สวยงาม
+- **Micro-interactions & UX Optimization**: ปรับแต่งการตอบสนองปุ่มด้วยระบบ `active:scale-[0.97]` (Physical Click Feel) และการหน่วงเวลาเคลื่อนไหวด้วย Custom Cubic-Bezier Transitions 
+- **Performance & Accessibility**: ใช้ CSS Layout Containment (`contain-layout`) สำหรับลดการวาดหน้าจอ (Repaint), รองรับ Reduced Motion เพื่อผู้พิการ และลบอาการปุ่มค้าง (Sticky Hover) บนระบบสัมผัส (Mobile/Tablet)
 
 ### ⚙️ Backend
 - **Node.js + Express + TypeScript**
@@ -114,13 +116,13 @@ npm run dev
 > - **บันทึกสต็อกละเอียด**: ตัดสต็อก Real-time พร้อมประวัติเข้า-ออก (Stock Movement)
 > - **ระบบสิทธิ์พนักงาน**: แบ่งสิทธิ์ Cashier, Manager, Admin ชัดเจน ป้องกันข้อมูลรั่วไหล
 > - **สรุปยอดขายเป้าหมาย**: ตั้งเป้ายอดขายรายวัน (Sales Target) และแจ้งเตือนเมื่อถึงเป้า
-> - **UI/UX ทันสมัย**: ใช้งานง่ายบน Tablet และ Desktop ดีไซน์สะอาดตา
+> - **UI/UX ทันสมัย**: ดีไซน์สะอาดตา ใช้งานลื่นไหลบน Tablet และ Desktop ด้วย Cubic-Bezier Transitions พร้อมการตอบสนองปุ่มกดทางฟิสิกส์ (Micro-interactions) และแก้ปุ่มค้าง (Sticky Hover) บนมือถือ
 > - **ความปลอดภัย**: รองรับการสำรองข้อมูล (Backup) และกู้คืนได้ทุกเมื่อ
 >
 > **พร้อมเปลี่ยนร้านคุณให้เป็นระบบมืออาชีพทันที!**
 >
 > **ราคาและทางเลือก:**
-> - **Standard License:** ฿5,500 (ติดตั้งพร้อมใช้แยกฐานข้อมูลส่วนตัว)
+> - **Standard License:** ฿6,500 (ติดตั้งพร้อมใช้แยกฐานข้อมูลส่วนตัว)
 > - **Custom Package:** เริ่มต้นที่ ฿7,500 (ปรับแต่งฟีเจอร์หรือเชื่อมต่อ API เพิ่มเติม)
 > *(บริการดูแลระบบและ Server รายเดือนเพียง 200 บาท)*
 >

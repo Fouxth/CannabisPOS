@@ -623,7 +623,7 @@ export default function Settings() {
                       return (
                         <div
                           key={key}
-                          className={`rounded-xl border p-4 bg-gradient-to-br ${config.color} transition-all hover:shadow-lg`}
+                          className={`rounded-xl border p-4 bg-gradient-to-br ${config.color} transition-[box-shadow] hover:shadow-lg`}
                         >
                           <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 text-2xl">{config.icon}</div>

@@ -177,7 +177,7 @@ export default function Users() {
           <Card
             key={user.id}
             className={cn(
-              'glass overflow-hidden transition-all duration-200 hover:shadow-lg animate-slide-up',
+              'glass overflow-hidden transition-[box-shadow] duration-200 hover:shadow-lg animate-slide-up',
               !user.isActive && 'opacity-60'
             )}
             style={{ animationDelay: `${index * 50}ms` }}

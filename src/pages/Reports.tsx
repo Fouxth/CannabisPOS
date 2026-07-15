@@ -880,8 +880,8 @@ export default function Reports() {
                                             formatter={(value) => `฿${formatCurrency(Number(value))}`}
                                         />
                                         <Legend />
-                                        <Area type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2.5} fill="url(#revenueGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }} />
-                                        <Area type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2.5} fill="url(#profitGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }} />
+                                        <Area type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2.5} fill="url(#revenueGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }} animationDuration={300} />
+                                        <Area type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2.5} fill="url(#profitGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }} animationDuration={300} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -905,6 +905,7 @@ export default function Reports() {
                                             outerRadius={80}
                                             fill="#8884d8"
                                             dataKey="value"
+                                            animationDuration={300}
                                         >
                                             {(reportsData.categoryBreakdown || []).map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

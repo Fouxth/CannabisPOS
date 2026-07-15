@@ -126,7 +126,7 @@ export default function Categories() {
           <Card
             key={category.id}
             className={cn(
-              'glass overflow-hidden transition-all duration-200 hover:shadow-lg animate-slide-up',
+              'glass overflow-hidden transition-[box-shadow] duration-200 hover:shadow-lg animate-slide-up',
               !category.isActive && 'opacity-60'
             )}
             style={{ animationDelay: `${index * 50}ms` }}
@@ -230,7 +230,7 @@ export default function Categories() {
                       key={color}
                       type="button"
                       className={cn(
-                        'h-8 w-8 rounded-full transition-all',
+                        'h-8 w-8 rounded-full transition-[box-shadow]',
                         selectedColor === color && 'ring-2 ring-offset-2 ring-offset-background'
                       )}
                       style={{ backgroundColor: color, boxShadow: selectedColor === color ? `0 0 10px ${color}` : 'none' }}

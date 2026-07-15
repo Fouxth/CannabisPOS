@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 import {
   TrendingUp,
   ShoppingCart,
@@ -15,7 +16,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { api } from '@/lib/api';
@@ -61,6 +62,14 @@ export default function Dashboard() {
   const totalSales = Object.values(salesByPayment).reduce((sum, value) => sum + value, 0);
   const cashPercent = totalSales ? ((cashTotal / totalSales) * 100).toFixed(1) : '0.0';
   const transferPercent = totalSales ? ((transferTotal / totalSales) * 100).toFixed(1) : '0.0';
+  const maxTopProductQty = Math.max(1, ...dashboard.topProducts.map((item) => item.quantity));
+
+  const STAT_COLOR_CLASSES = {
+    primary: { chip: 'bg-primary/10', text: 'text-primary' },
+    success: { chip: 'bg-success/10', text: 'text-success' },
+    info: { chip: 'bg-info/10', text: 'text-info' },
+    warning: { chip: 'bg-warning/10', text: 'text-warning' },
+  } as const;
 
   const statCards = [
     {
@@ -69,7 +78,7 @@ export default function Dashboard() {
       change: 12.5,
       icon: DollarSign,
       format: 'currency' as const,
-      color: 'primary',
+      color: 'primary' as const,
       clickable: true,
     },
     {
@@ -78,7 +87,7 @@ export default function Dashboard() {
       change: 8.2,
       icon: ShoppingCart,
       format: 'number' as const,
-      color: 'success',
+      color: 'success' as const,
       clickable: false,
     },
     {
@@ -87,7 +96,7 @@ export default function Dashboard() {
       change: 3.8,
       icon: TrendingUp,
       format: 'currency' as const,
-      color: 'info',
+      color: 'info' as const,
       clickable: false,
     },
     {
@@ -96,7 +105,7 @@ export default function Dashboard() {
       change: -2,
       icon: AlertTriangle,
       format: 'number' as const,
-      color: 'warning',
+      color: 'warning' as const,
       clickable: false,
     },
   ];
@@ -116,14 +125,14 @@ export default function Dashboard() {
         {statCards.map((stat, index) => (
           <Card
             key={stat.title}
-            className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:bg-secondary/20 transition-all duration-300' : ''}`}
+            className={`glass overflow-hidden animate-slide-up ${stat.clickable ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:bg-secondary/20 transition-[transform,box-shadow,background-color] duration-300' : ''}`}
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => stat.clickable && setShowSalesDetail(true)}
           >
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div className={`rounded-xl p-2.5 sm:p-3 bg-${stat.color}/10`}>
-                  <stat.icon className={`h-5 w-5 text-${stat.color}`} />
+                <div className={cn('rounded-xl p-2.5 sm:p-3', STAT_COLOR_CLASSES[stat.color].chip)}>
+                  <stat.icon className={cn('h-5 w-5', STAT_COLOR_CLASSES[stat.color].text)} />
                 </div>
                 <Badge
                   variant={stat.change >= 0 ? 'default' : 'destructive'}
@@ -138,7 +147,7 @@ export default function Dashboard() {
                 </Badge>
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold font-display">
+                <p className={cn('text-2xl font-bold font-display', STAT_COLOR_CLASSES[stat.color].text)}>
                   {stat.format === 'currency'
                     ? formatCurrency(stat.value)
                     : stat.value.toLocaleString()}
@@ -208,11 +217,11 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">สัดส่วนการชำระเงิน</p>
               <div className="h-4 rounded-full overflow-hidden flex">
                 <div
-                  className="bg-success h-full transition-all"
+                  className="bg-success h-full transition-[width]"
                   style={{ width: `${cashPercent}%` }}
                 />
                 <div
-                  className="bg-info h-full transition-all"
+                  className="bg-info h-full transition-[width]"
                   style={{ width: `${transferPercent}%` }}
                 />
               </div>
@@ -284,6 +293,7 @@ export default function Dashboard() {
                     strokeWidth={2.5}
                     fill="url(#salesGradient)"
                     activeDot={{ r: 5, strokeWidth: 0, fill: "hsl(var(--primary))" }}
+                    animationDuration={300}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -298,53 +308,33 @@ export default function Dashboard() {
             <CardDescription>5 อันดับสินค้าที่ขายได้มากที่สุดวันนี้</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[220px] sm:h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={dashboard.topProducts}
-                  layout="vertical"
-                  margin={{ left: 0, right: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.35)" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={11}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="product.name"
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={11}
-                    width={100}
-                    tickFormatter={(name) => name.length > 12 ? `${name.slice(0, 12)}...` : name}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--popover))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-                    }}
-                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
-                    formatter={(value: number, name: string) => [
-                      name === 'quantity' ? `${value} กรัม` : formatCurrency(value),
-                      name === 'quantity' ? 'จำนวน' : 'รายได้'
-                    ]}
-                  />
-                  <Bar
-                    dataKey="quantity"
-                    fill="hsl(var(--primary))"
-                    radius={[0, 6, 6, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {dashboard.topProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">ยังไม่มีข้อมูลการขายวันนี้</p>
+            ) : (
+              <div className="space-y-3.5">
+                {dashboard.topProducts.map((item, index) => (
+                  <div key={item.product.id} className="flex items-center gap-3">
+                    <span className="flex-shrink-0 w-4 text-center text-xs font-semibold text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium truncate">{item.product.name}</p>
+                        <span className="flex-shrink-0 text-xs text-muted-foreground tabular-nums">
+                          {item.quantity} {item.product.stockUnit} · ฿{formatCurrency(item.revenue)}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-1.5">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${(item.quantity / maxTopProductQty) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

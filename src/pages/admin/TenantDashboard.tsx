@@ -391,7 +391,7 @@ export default function TenantDashboard() {
 
                             <Button 
                                 type="submit" 
-                                className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-base rounded-2xl transition-all shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/15"
+                                className="w-full h-14 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-base rounded-2xl transition-[background-color,box-shadow] shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/15"
                                 disabled={creating}
                             >
                                 {creating ? (

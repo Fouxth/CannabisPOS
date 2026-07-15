@@ -45,6 +45,9 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 98%;
 
+    --expense: 350 65% 47%;
+    --expense-foreground: 0 0% 98%;
+
     --sidebar-background: 240 10% 98.8%;
     --sidebar-foreground: 240 10% 15%;
     --sidebar-primary: 145 30% 36%;
@@ -53,6 +56,9 @@
     --sidebar-accent-foreground: 240 10% 5%;
     --sidebar-border: 240 5.9% 92%;
     --sidebar-ring: 145 30% 36%;
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   }
 
   .dark {
@@ -92,6 +98,9 @@
 
     --info: 199 89% 48%;
     --info-foreground: 240 10% 6%;
+
+    --expense: 350 70% 65%;
+    --expense-foreground: 240 10% 6%;
 
     --sidebar-background: 240 10% 6%;
     --sidebar-foreground: 240 5% 80%;
@@ -156,23 +165,34 @@
   }
 
   .animate-fade-in {
-    animation: fadeIn 0.25s ease-out;
+    animation: fadeIn 0.25s var(--ease-out);
   }
 
   .animate-slide-up {
-    animation: slideUp 0.35s ease-out;
+    animation: slideUp 0.35s var(--ease-out);
   }
 
   .animate-slide-in-right {
-    animation: slideInRight 0.25s ease-out;
+    animation: slideInRight 0.25s var(--ease-out);
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.18s ease-out;
+    animation: scaleIn 0.18s var(--ease-out);
   }
 
   .animate-pulse-soft {
-    animation: pulseSoft 2s ease-in-out infinite;
+    animation: pulseSoft 2s var(--ease-in-out) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -264,6 +284,8 @@ input[type="number"] {
 }
 
 /* Card hover effect in dark mode fix */
-.dark .hover\:shadow-lg:hover {
-  box-shadow: 0 8px 24px -4px hsl(0 0% 0% / 0.4);
+@media (hover: hover) and (pointer: fine) {
+  .dark .hover\:shadow-lg:hover {
+    box-shadow: 0 8px 24px -4px hsl(0 0% 0% / 0.4);
+  }
 }

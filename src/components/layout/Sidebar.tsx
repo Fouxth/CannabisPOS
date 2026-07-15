@@ -60,7 +60,7 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border transition-all duration-300 flex flex-col',
+        'fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] contain-layout flex flex-col',
         'bg-sidebar shadow-[1px_0_12px_0_hsl(0_0%_0%/0.06)] dark:shadow-[1px_0_16px_0_hsl(0_0%_0%/0.25)]',
         collapsed ? 'w-[70px]' : 'w-[240px]'
       )}
@@ -93,16 +93,19 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
                   to={item.path}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    'flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-all duration-200 group relative',
+                    'flex items-center gap-3 px-2.5 py-2.5 rounded-xl transition-[background-color,color] duration-200 group relative',
                     isActive
                       ? 'bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))] dark:bg-[hsl(var(--primary)/0.15)] font-semibold shadow-none'
                       : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                   )}
                 >
                   {/* Active indicator bar */}
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-r-full" />
-                  )}
+                  <span
+                    className={cn(
+                      'absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-r-full transition-[transform,opacity] duration-150',
+                      isActive ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'
+                    )}
+                  />
                   <item.icon className={cn(
                     'flex-shrink-0 transition-transform duration-200',
                     'w-[18px] h-[18px]',

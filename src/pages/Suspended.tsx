@@ -44,7 +44,6 @@ export default function Suspended() {
     if (isRestored) {
         return (
             <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-sm z-50">
-                <div className="absolute inset-0 bg-green-500/10 animate-pulse pointer-events-none" />
                 <Card className="max-w-2xl w-full mx-4 border-4 border-green-500/80 bg-black/95 shadow-[0_0_50px_rgba(34,197,94,0.5)] transform scale-110 animate-in fade-in duration-500">
                     <CardContent className="pt-12 pb-12 px-8 text-center space-y-8">
                         <div className="mx-auto w-32 h-32 rounded-full bg-green-500 flex items-center justify-center shadow-lg animate-bounce">
@@ -55,7 +54,7 @@ export default function Suspended() {
                             <h1 className="text-4xl md:text-5xl font-black font-display text-green-500 tracking-tight uppercase drop-shadow-md">
                                 SYSTEM UNLOCKED
                             </h1>
-                            <p className="text-2xl md:text-3xl text-white font-bold animate-pulse">
+                            <p className="text-2xl md:text-3xl text-white font-bold">
                                 เปิดใช้งานเรียบร้อย
                             </p>
                         </div>
@@ -77,9 +76,6 @@ export default function Suspended() {
 
     return (
         <div className="fixed inset-0 w-full h-full flex items-center justify-center bg-black/90 backdrop-blur-sm z-50">
-            {/* Pulsing Red Background Effect */}
-            <div className="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none" />
-
             <Card className="max-w-2xl w-full mx-4 border-4 border-red-600/80 bg-black/95 shadow-[0_0_50px_rgba(220,38,38,0.5)] transform scale-110">
                 <CardContent className="pt-12 pb-12 px-8 text-center space-y-8">
                     <div className="mx-auto w-32 h-32 rounded-full bg-red-600 flex items-center justify-center shadow-lg animate-bounce">
@@ -90,7 +86,7 @@ export default function Suspended() {
                         <h1 className="text-4xl md:text-5xl font-black font-display text-red-500 tracking-tight uppercase drop-shadow-md">
                             SYSTEM LOCKED
                         </h1>
-                        <p className="text-2xl md:text-3xl text-white font-bold animate-pulse">
+                        <p className="text-2xl md:text-3xl text-white font-bold">
                             กรุณาติดต่อบังสุดหล่อ
                         </p>
                     </div>
