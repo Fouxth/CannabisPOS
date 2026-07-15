@@ -4,10 +4,18 @@ import { AsyncLocalStorage } from 'async_hooks';
 // AsyncLocalStorage holds the tenantId context for the current request lifecycle
 export const tenantLocalStorage = new AsyncLocalStorage<string>();
 
-const basePrisma = new PrismaClient();
+const globalForPrisma = globalThis as unknown as {
+    basePrisma: PrismaClient | undefined;
+    prisma: any;
+};
+
+const basePrisma = globalForPrisma.basePrisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.basePrisma = basePrisma;
+}
 
 // Prisma Client Extension to automatically filter and inject tenantId on all POS queries
-export const prisma = basePrisma.$extends({
+export const prisma = globalForPrisma.prisma ?? basePrisma.$extends({
     query: {
         $allModels: {
             async $allOperations({ model, operation, args, query }) {
@@ -42,12 +50,8 @@ export const prisma = basePrisma.$extends({
             }
         }
     }
-}) as unknown as PrismaClient; // Cast to retain type compatibility for existing code
-
-declare global {
-    var prisma: PrismaClient | undefined;
-}
+});
 
 if (process.env.NODE_ENV !== 'production') {
-    global.prisma = prisma;
+    globalForPrisma.prisma = prisma;
 }
