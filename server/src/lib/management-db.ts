@@ -1,13 +1,13 @@
 import { PrismaClient } from '../generated/management';
 
-declare global {
-    var managementPrisma: PrismaClient | undefined;
-}
+const globalForManagement = globalThis as unknown as {
+    managementPrisma: PrismaClient | undefined;
+};
 
-export const managementPrisma = global.managementPrisma || new PrismaClient();
+export const managementPrisma = globalForManagement.managementPrisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') {
-    global.managementPrisma = managementPrisma;
+    globalForManagement.managementPrisma = managementPrisma;
 }
 
 export type { Tenant, Prisma } from '../generated/management';
