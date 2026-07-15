@@ -38,6 +38,7 @@ export function MainLayout() {
         <Sidebar
           collapsed={sidebarCollapsed}
           onCollapse={setSidebarCollapsed}
+          className="fixed left-0 top-0 z-40"
         />
       </div>
 
@@ -47,6 +48,7 @@ export function MainLayout() {
           <Sidebar
             collapsed={false}
             onCollapse={() => {}}
+            className="w-full h-full border-r-0"
           />
         </SheetContent>
       </Sheet>

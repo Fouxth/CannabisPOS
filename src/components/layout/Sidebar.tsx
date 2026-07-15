@@ -43,9 +43,10 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   collapsed: boolean;
   onCollapse: (collapsed: boolean) => void;
+  className?: string;
 }
 
-export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
+export function Sidebar({ collapsed, onCollapse, className }: SidebarProps) {
   const location = useLocation();
   const { user, hasPermission } = useAuth();
 
@@ -60,9 +61,10 @@ export function Sidebar({ collapsed, onCollapse }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r border-sidebar-border transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] contain-layout flex flex-col',
+        'h-screen border-r border-sidebar-border transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] contain-layout flex flex-col',
         'bg-sidebar shadow-[1px_0_12px_0_hsl(0_0%_0%/0.06)] dark:shadow-[1px_0_16px_0_hsl(0_0%_0%/0.25)]',
-        collapsed ? 'w-[70px]' : 'w-[240px]'
+        collapsed ? 'w-[70px]' : 'w-[240px]',
+        className
       )}
     >
       {/* Logo */}
