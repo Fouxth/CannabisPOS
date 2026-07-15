@@ -152,6 +152,7 @@ export default function Categories() {
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => { setEditingCategory(category); setSelectedColor(category.color); setShowDialog(true); }}
+                    aria-label={`แก้ไข ${category.name}`}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -160,6 +161,7 @@ export default function Categories() {
                     size="icon"
                     className="h-8 w-8 text-destructive hover:text-destructive"
                     onClick={() => handleDelete(category)}
+                    aria-label={`ลบ ${category.name}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

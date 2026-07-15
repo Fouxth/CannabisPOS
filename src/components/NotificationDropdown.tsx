@@ -54,7 +54,12 @@ export function NotificationDropdown() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative h-8 w-8 sm:h-9 sm:w-9"
+                    aria-label={unreadCount > 0 ? `การแจ้งเตือน (${unreadCount} รายการที่ยังไม่อ่าน)` : 'การแจ้งเตือน'}
+                >
                     <Bell className="h-4 w-4" />
                     {unreadCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 sm:-top-1 sm:-right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-destructive text-[9px] sm:text-[10px] font-bold text-destructive-foreground animate-in zoom-in duration-300">

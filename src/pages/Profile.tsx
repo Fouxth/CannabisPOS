@@ -141,6 +141,7 @@ export default function Profile() {
                                                     variant="outline"
                                                     size="icon"
                                                     title="สุ่มรูปการ์ตูน"
+                                                    aria-label="สุ่มรูปการ์ตูน"
                                                     onClick={() => {
                                                         const seed = Math.random().toString(36).substring(7);
                                                         setFormData({ ...formData, avatarUrl: `https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}` });

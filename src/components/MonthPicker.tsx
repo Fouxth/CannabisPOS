@@ -17,6 +17,7 @@ export function MonthPicker({ currentDate, onDateChange, className }: MonthPicke
                 size="icon"
                 onClick={() => onDateChange(subMonths(currentDate, 1))}
                 className="h-8 w-8"
+                aria-label="เดือนก่อนหน้า"
             >
                 <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -28,6 +29,7 @@ export function MonthPicker({ currentDate, onDateChange, className }: MonthPicke
                 size="icon"
                 onClick={() => onDateChange(addMonths(currentDate, 1))}
                 className="h-8 w-8"
+                aria-label="เดือนถัดไป"
             >
                 <ChevronRight className="h-4 w-4" />
             </Button>

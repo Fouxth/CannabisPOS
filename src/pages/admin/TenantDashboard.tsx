@@ -521,6 +521,7 @@ export default function TenantDashboard() {
                                                             size="icon"
                                                             onClick={() => openEditDialog(tenant)}
                                                             className="h-9 w-9 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                                                            aria-label={`แก้ไข ${tenant.name}`}
                                                         >
                                                             <Pencil className="h-4.5 w-4.5" />
                                                         </Button>
@@ -529,6 +530,7 @@ export default function TenantDashboard() {
                                                             size="icon"
                                                             onClick={() => navigate(`/admin/tenants/${tenant.id}`)}
                                                             className="h-9 w-9 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                                            aria-label={`ดูรายละเอียด ${tenant.name}`}
                                                         >
                                                             <Eye className="h-4.5 w-4.5" />
                                                         </Button>
@@ -537,6 +539,7 @@ export default function TenantDashboard() {
                                                             size="icon"
                                                             onClick={() => handleDelete(tenant.id, tenant.name)}
                                                             className="h-9 w-9 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                                                            aria-label={`ลบ ${tenant.name}`}
                                                         >
                                                             <Trash2 className="h-4.5 w-4.5" />
                                                         </Button>
@@ -585,7 +588,7 @@ export default function TenantDashboard() {
                                 <div className="p-3.5 bg-slate-50 dark:bg-slate-950/40 rounded-xl font-mono text-sm font-bold text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-800 flex-1 select-all">
                                     {createdUser?.password}
                                 </div>
-                                <Button size="icon" variant="outline" onClick={copyToClipboard} className="h-12 w-12 rounded-xl border-slate-200 dark:border-slate-800">
+                                <Button size="icon" variant="outline" onClick={copyToClipboard} className="h-12 w-12 rounded-xl border-slate-200 dark:border-slate-800" aria-label={copied ? 'คัดลอกแล้ว' : 'คัดลอกรหัสผ่าน'}>
                                     {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4 text-slate-500" />}
                                 </Button>
                             </div>

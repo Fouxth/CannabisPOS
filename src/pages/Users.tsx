@@ -173,14 +173,13 @@ export default function Users() {
 
       {/* Users Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredUsers.map((user, index) => (
+        {filteredUsers.map((user) => (
           <Card
             key={user.id}
             className={cn(
-              'glass overflow-hidden transition-[box-shadow] duration-200 hover:shadow-lg animate-slide-up',
+              'glass overflow-hidden transition-[box-shadow] duration-200 hover:shadow-lg',
               !user.isActive && 'opacity-60'
             )}
-            style={{ animationDelay: `${index * 50}ms` }}
           >
             <CardContent className="p-5">
               <div className="flex items-start justify-between">
@@ -198,7 +197,7 @@ export default function Users() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`ตัวเลือกเพิ่มเติมสำหรับ ${user.fullName}`}>
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

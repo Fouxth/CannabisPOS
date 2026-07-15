@@ -50,6 +50,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           size="icon"
           className="lg:hidden h-8 w-8"
           onClick={onMenuClick}
+          aria-label="เปิดเมนู"
         >
           <Menu className="h-4 w-4" />
         </Button>
@@ -74,12 +75,25 @@ export function Header({ onMenuClick }: HeaderProps) {
           variant="ghost"
           size="icon"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          className="relative h-8 w-8 text-muted-foreground hover:text-foreground"
+          aria-label={theme === 'dark' ? 'สลับเป็นธีมสว่าง' : 'สลับเป็นธีมมืด'}
         >
-          {theme === 'dark'
-            ? <Sun className="h-4 w-4 text-amber-400" />
-            : <Moon className="h-4 w-4" />
-          }
+          <span
+            className={cn(
+              'absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]',
+              theme === 'dark' ? 'scale-100 rotate-0 opacity-100' : 'scale-50 -rotate-90 opacity-0'
+            )}
+          >
+            <Sun className="h-4 w-4 text-amber-400" />
+          </span>
+          <span
+            className={cn(
+              'absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-300 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)]',
+              theme === 'dark' ? 'scale-50 rotate-90 opacity-0' : 'scale-100 rotate-0 opacity-100'
+            )}
+          >
+            <Moon className="h-4 w-4" />
+          </span>
         </Button>
 
         {/* Notifications */}

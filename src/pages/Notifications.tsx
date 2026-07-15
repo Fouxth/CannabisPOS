@@ -122,6 +122,7 @@ export default function Notifications() {
                                                                     className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                                     onClick={() => markAsRead.mutate(notification.id)}
                                                                     title="ทำเครื่องหมายว่าอ่านแล้ว"
+                                                                    aria-label="ทำเครื่องหมายว่าอ่านแล้ว"
                                                                 >
                                                                     <div className="h-2 w-2 rounded-full bg-primary" />
                                                                 </Button>
@@ -132,6 +133,7 @@ export default function Notifications() {
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                                                 onClick={() => deleteNotification.mutate(notification.id)}
                                                                 title="ลบ"
+                                                                aria-label={`ลบการแจ้งเตือน: ${notification.title}`}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -188,6 +190,7 @@ export default function Notifications() {
                                                                 className="h-8 w-8 text-muted-foreground hover:text-primary"
                                                                 onClick={() => markAsRead.mutate(notification.id)}
                                                                 title="ทำเครื่องหมายว่าอ่านแล้ว"
+                                                                aria-label="ทำเครื่องหมายว่าอ่านแล้ว"
                                                             >
                                                                 <div className="h-2 w-2 rounded-full bg-primary" />
                                                             </Button>
@@ -197,6 +200,7 @@ export default function Notifications() {
                                                                 className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                                                 onClick={() => deleteNotification.mutate(notification.id)}
                                                                 title="ลบ"
+                                                                aria-label={`ลบการแจ้งเตือน: ${notification.title}`}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>

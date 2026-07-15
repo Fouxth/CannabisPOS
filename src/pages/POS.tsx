@@ -269,7 +269,7 @@ export default function POS() {
 
       {/* Products Section */}
       <div className={cn(
-        "flex-1 flex flex-col gap-4 min-w-0 h-full",
+        "flex-1 flex flex-col gap-4 min-w-0 h-full animate-fade-in",
         mobileTab === 'cart' ? "hidden lg:flex" : "flex"
       )}>
         {/* Categories */}
@@ -316,6 +316,7 @@ export default function POS() {
           <button
             onClick={() => setMobileTab('cart')}
             className="lg:hidden relative flex items-center justify-center w-10 h-10 rounded-xl bg-primary text-primary-foreground shadow-md flex-shrink-0 active:scale-95 transition-transform"
+            aria-label={cartItemCount > 0 ? `ตะกร้าสินค้า (${cartItemCount} รายการ)` : 'ตะกร้าสินค้า'}
           >
             <ShoppingCart className="h-5 w-5" />
             {cartItemCount > 0 && (
@@ -437,7 +438,7 @@ export default function POS() {
 
       {/* Cart Section — full-screen overlay on mobile, sidebar on desktop */}
       <Card className={cn(
-        "flex flex-col glass",
+        "flex flex-col glass animate-slide-in-right",
         "lg:w-80 xl:w-96",
         // Mobile: fixed full-screen overlay
         mobileTab === 'products'
@@ -453,6 +454,7 @@ export default function POS() {
                 size="icon"
                 className="lg:hidden -ml-1 h-8 w-8"
                 onClick={() => setMobileTab('products')}
+                aria-label="กลับไปหน้าสินค้า"
               >
                 <ArrowRightLeft className="h-4 w-4 rotate-180" />
               </Button>
@@ -509,6 +511,7 @@ export default function POS() {
                             ? updateCartItem(item.id, { quantity: item.quantity - 1 })
                             : removeFromCart(item.id)
                         }
+                        aria-label="ลดจำนวน"
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -518,6 +521,7 @@ export default function POS() {
                         size="icon"
                         className="h-7 w-7"
                         onClick={() => updateCartItem(item.id, { quantity: item.quantity + 1 })}
+                        aria-label="เพิ่มจำนวน"
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -532,6 +536,7 @@ export default function POS() {
                       size="icon"
                       className="h-7 w-7 text-destructive hover:text-destructive"
                       onClick={() => removeFromCart(item.id)}
+                      aria-label={`ลบ ${item.product.name} ออกจากตะกร้า`}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>

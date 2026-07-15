@@ -242,15 +242,11 @@ export default function Expenses() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredExpenses.map((expense, index) => {
+                                filteredExpenses.map((expense) => {
                                     const category = EXPENSE_CATEGORIES.find((c) => c.value === expense.category);
 
                                     return (
-                                        <TableRow
-                                            key={expense.id}
-                                            className="animate-fade-in"
-                                            style={{ animationDelay: `${index * 30}ms` }}
-                                        >
+                                        <TableRow key={expense.id}>
                                             <TableCell>
                                                 <div className="flex items-center gap-2">
                                                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -284,7 +280,7 @@ export default function Expenses() {
                                             <TableCell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`ตัวเลือกเพิ่มเติมสำหรับ ${expense.title}`}>
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>

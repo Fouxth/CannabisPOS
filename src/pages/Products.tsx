@@ -224,16 +224,12 @@ export default function Products() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product, index) => {
+              {filteredProducts.map((product) => {
                 const category = categories.find((c) => c.id === product.categoryId) || product.category;
                 const isLowStock = product.stock <= product.minStock;
 
                 return (
-                  <TableRow
-                    key={product.id}
-                    className="animate-fade-in"
-                    style={{ animationDelay: `${index * 30}ms` }}
-                  >
+                  <TableRow key={product.id}>
                     <TableCell>
                       <div>
                         <p className="font-medium">{product.name}</p>
@@ -271,7 +267,7 @@ export default function Products() {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`ตัวเลือกเพิ่มเติมสำหรับ ${product.name}`}>
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

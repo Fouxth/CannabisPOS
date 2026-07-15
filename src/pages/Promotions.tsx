@@ -428,6 +428,7 @@ export default function Promotions() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleEdit(promo)}
+                                                aria-label={`แก้ไข ${promo.name}`}
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
@@ -435,6 +436,7 @@ export default function Promotions() {
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => handleDelete(promo.id)}
+                                                aria-label={`ลบ ${promo.name}`}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>

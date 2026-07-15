@@ -15,6 +15,7 @@ export default function AdminLayout() {
                     size="icon"
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                     className="h-9 w-9 rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-slate-200/50 dark:border-slate-700/50 shadow-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    aria-label={theme === 'dark' ? 'สลับเป็นธีมสว่าง' : 'สลับเป็นธีมมืด'}
                 >
                     {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4" />}
                 </Button>

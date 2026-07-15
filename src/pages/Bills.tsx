@@ -263,7 +263,7 @@ export default function Bills() {
                     ) : (
                         <ScrollArea className="h-[400px] sm:h-[600px]">
                             <div className="space-y-3">
-                                {filteredBills.map((bill, index) => {
+                                {filteredBills.map((bill) => {
                                     const PaymentIcon = paymentIcons[bill.paymentMethod] || Banknote;
                                     if (isLoading) {
                                         return (
@@ -279,10 +279,9 @@ export default function Bills() {
                                         <div
                                             key={bill.id}
                                             className={cn(
-                                                'flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors animate-slide-in-right',
+                                                'flex flex-col md:flex-row items-stretch md:items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors',
                                                 bill.status === 'voided' && 'opacity-50'
                                             )}
-                                            style={{ animationDelay: `${index * 30}ms` }}
                                         >
                                             {/* Top Section: Icon + Info */}
                                             <div className="flex items-start gap-4 flex-1">
@@ -342,6 +341,7 @@ export default function Bills() {
                                                         variant="outline"
                                                         size="icon"
                                                         onClick={() => handleViewBill(bill)}
+                                                        aria-label={`ดูรายละเอียดบิล ${bill.billNumber}`}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>

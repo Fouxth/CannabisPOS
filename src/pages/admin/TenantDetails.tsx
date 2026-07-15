@@ -147,7 +147,7 @@ export default function TenantDetails() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/admin')} aria-label="กลับไปหน้ารายการร้านค้า">
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>

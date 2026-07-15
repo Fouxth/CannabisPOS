@@ -164,6 +164,7 @@ export function Sidebar({ collapsed, onCollapse, className }: SidebarProps) {
       <button
         onClick={() => onCollapse(!collapsed)}
         className="hidden lg:flex items-center justify-center h-10 border-t border-sidebar-border text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors text-xs gap-1.5"
+        aria-label={collapsed ? 'ขยายเมนู' : 'ย่อเมนู'}
       >
         <ChevronLeft className={cn('w-4 h-4 transition-transform duration-300', collapsed && 'rotate-180')} />
         {!collapsed && <span>ย่อเมนู</span>}

@@ -18,6 +18,7 @@ export function YearPicker({ currentDate, onDateChange, className }: YearPickerP
                 size="icon"
                 onClick={() => onDateChange(subYears(currentDate, 1))}
                 className="h-8 w-8"
+                aria-label="ปีก่อนหน้า"
             >
                 <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -29,6 +30,7 @@ export function YearPicker({ currentDate, onDateChange, className }: YearPickerP
                 size="icon"
                 onClick={() => onDateChange(addYears(currentDate, 1))}
                 className="h-8 w-8"
+                aria-label="ปีถัดไป"
             >
                 <ChevronRight className="h-4 w-4" />
             </Button>

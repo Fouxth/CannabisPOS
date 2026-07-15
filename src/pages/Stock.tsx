@@ -248,18 +248,14 @@ export default function Stock() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((product, index) => {
+                  {filteredProducts.map((product) => {
                     const isLowStock = product.stock <= product.minStock;
                     const isOutOfStock = product.stock === 0;
                     const stockPercentage = Math.min((product.stock / (product.minStock * 2)) * 100, 100);
                     const stockValue = product.stock * product.cost;
 
                     return (
-                      <TableRow
-                        key={product.id}
-                        className="animate-fade-in"
-                        style={{ animationDelay: `${index * 30}ms` }}
-                      >
+                      <TableRow key={product.id}>
                         <TableCell>
                           <div>
                             <p className="font-medium">{product.name}</p>
