@@ -22,18 +22,31 @@ export const prisma = globalForPrisma.prisma ?? basePrisma.$extends({
                 const tenantId = tenantLocalStorage.getStore();
 
                 if (tenantId) {
+                    const injectTenantToData = (data: any): any => {
+                        if (!data || typeof data !== 'object') return data;
+                        if (Array.isArray(data)) {
+                            return data.map((item: any) => injectTenantToData(item));
+                        }
+                        const result: any = { ...data, tenantId: data.tenantId ?? tenantId };
+                        for (const key of Object.keys(result)) {
+                            if (result[key] && typeof result[key] === 'object' && 'create' in result[key]) {
+                                result[key] = {
+                                    ...result[key],
+                                    create: injectTenantToData(result[key].create)
+                                };
+                            }
+                        }
+                        return result;
+                    };
+
                     // 1. Inject tenantId into write operations
                     if (operation === 'create') {
-                        args.data = { ...args.data, tenantId };
+                        args.data = injectTenantToData(args.data);
                     } else if (operation === 'createMany') {
-                        if (Array.isArray(args.data)) {
-                            args.data = args.data.map((item: any) => ({ ...item, tenantId }));
-                        } else {
-                            args.data = { ...args.data, tenantId };
-                        }
+                        args.data = injectTenantToData(args.data);
                     } else if (operation === 'upsert') {
-                        args.create = { ...args.create, tenantId };
-                        args.update = { ...args.update, tenantId };
+                        args.create = injectTenantToData(args.create);
+                        args.update = injectTenantToData(args.update);
                     }
 
                     if ([

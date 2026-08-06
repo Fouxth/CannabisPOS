@@ -762,7 +762,7 @@ export default function Settings() {
             <CardHeader>
               <CardTitle className="font-display">สำรองข้อมูล</CardTitle>
               <CardDescription>
-                สำรองข้อมูลร้านค้า สินค้า และการตั้งค่าต่างๆ (ไม่รวมข้อมูลการขาย)
+                สำรองข้อมูลร้านค้า สินค้า ประวัติการขาย รายจ่าย และการตั้งค่าทั้งหมดของร้านเป็นไฟล์ JSON
               </CardDescription>
             </CardHeader>
             <CardContent>

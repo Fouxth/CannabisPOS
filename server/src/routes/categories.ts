@@ -38,10 +38,22 @@ router.get('/:id', async (req, res) => {
 // Create category
 router.post('/', async (req, res) => {
     try {
-        const { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
+        let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
 
-        if (!name || !slug || !color || !icon) {
-            return res.status(400).json({ message: 'Name, slug, color, and icon are required' });
+        if (!name || !color || !icon) {
+            return res.status(400).json({ message: 'Name, color, and icon are required' });
+        }
+
+        if (!slug) {
+            slug = name.toLowerCase().trim().replace(/\s+/g, '-');
+        }
+
+        // Auto-resolve slug collision by appending a unique suffix if needed
+        const existingSlug = await req.tenantPrisma!.category.findFirst({
+            where: { slug },
+        });
+        if (existingSlug) {
+            slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
         }
 
         const category = await req.tenantPrisma!.category.create({
@@ -72,12 +84,20 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
+        let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
 
         const data: Record<string, any> = {};
         if (name !== undefined) data.name = name;
         if (nameEn !== undefined) data.nameEn = nameEn;
-        if (slug !== undefined) data.slug = slug;
+        if (slug !== undefined) {
+            const existingSlug = await req.tenantPrisma!.category.findFirst({
+                where: { slug, NOT: { id } },
+            });
+            if (existingSlug) {
+                slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
+            }
+            data.slug = slug;
+        }
         if (description !== undefined) data.description = description;
         if (color !== undefined) data.color = color;
         if (icon !== undefined) data.icon = icon;

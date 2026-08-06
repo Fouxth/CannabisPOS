@@ -119,6 +119,7 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                 const totalValue = item.total ?? unitPrice * item.quantity - discountValue;
 
                 return {
+                    tenantId: req.tenantId!,
                     productId: item.productId,
                     productName: item.productName ?? product.name,
                     quantity: item.quantity,
