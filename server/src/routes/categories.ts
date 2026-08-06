@@ -37,30 +37,25 @@ router.get('/:id', async (req, res) => {
 
 // Create category
 router.post('/', async (req, res) => {
+    let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
+
+    if (!name || !color || !icon) {
+        return res.status(400).json({ message: 'Name, color, and icon are required' });
+    }
+
+    if (!slug) {
+        slug = name.toLowerCase().trim().replace(/\s+/g, '-');
+    }
+
+    // Always ensure slug is unique by appending a short random hash
+    const uniqueSlug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
+
     try {
-        let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
-
-        if (!name || !color || !icon) {
-            return res.status(400).json({ message: 'Name, color, and icon are required' });
-        }
-
-        if (!slug) {
-            slug = name.toLowerCase().trim().replace(/\s+/g, '-');
-        }
-
-        // Auto-resolve slug collision by appending a unique suffix if needed
-        const existingSlug = await req.tenantPrisma!.category.findFirst({
-            where: { slug },
-        });
-        if (existingSlug) {
-            slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
-        }
-
         const category = await req.tenantPrisma!.category.create({
             data: {
                 name,
                 nameEn,
-                slug,
+                slug: uniqueSlug,
                 description,
                 color,
                 icon,
@@ -70,53 +65,78 @@ router.post('/', async (req, res) => {
             },
             include: { _count: { select: { products: true } } },
         });
-        res.status(201).json(toCategoryDto({ ...category, productCount: category._count.products }));
+        return res.status(201).json(toCategoryDto({ ...category, productCount: category._count.products }));
     } catch (error: any) {
         console.error('Create category error', error);
         if (error.code === 'P2002') {
-            return res.status(400).json({ message: 'Slug already exists' });
+            try {
+                const fallbackSlug = `${slug}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+                const category = await req.tenantPrisma!.category.create({
+                    data: {
+                        name,
+                        nameEn,
+                        slug: fallbackSlug,
+                        description,
+                        color,
+                        icon,
+                        isActive: isActive ?? true,
+                        parentId,
+                        sortOrder: sortOrder ?? 0,
+                    },
+                    include: { _count: { select: { products: true } } },
+                });
+                return res.status(201).json(toCategoryDto({ ...category, productCount: category._count.products }));
+            } catch (retryErr) {
+                console.error('Retry create category error', retryErr);
+            }
         }
-        res.status(500).json({ message: 'Unable to create category' });
+        return res.status(500).json({ message: 'Unable to create category' });
     }
 });
 
 // Update category
 router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
+
+    const data: Record<string, any> = {};
+    if (name !== undefined) data.name = name;
+    if (nameEn !== undefined) data.nameEn = nameEn;
+    if (slug !== undefined) {
+        data.slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
+    }
+    if (description !== undefined) data.description = description;
+    if (color !== undefined) data.color = color;
+    if (icon !== undefined) data.icon = icon;
+    if (typeof isActive === 'boolean') data.isActive = isActive;
+    if (parentId !== undefined) data.parentId = parentId;
+    if (sortOrder !== undefined) data.sortOrder = sortOrder;
+
     try {
-        const { id } = req.params;
-        let { name, nameEn, slug, description, color, icon, isActive, parentId, sortOrder } = req.body;
-
-        const data: Record<string, any> = {};
-        if (name !== undefined) data.name = name;
-        if (nameEn !== undefined) data.nameEn = nameEn;
-        if (slug !== undefined) {
-            const existingSlug = await req.tenantPrisma!.category.findFirst({
-                where: { slug, NOT: { id } },
-            });
-            if (existingSlug) {
-                slug = `${slug}-${Math.random().toString(36).substring(2, 7)}`;
-            }
-            data.slug = slug;
-        }
-        if (description !== undefined) data.description = description;
-        if (color !== undefined) data.color = color;
-        if (icon !== undefined) data.icon = icon;
-        if (typeof isActive === 'boolean') data.isActive = isActive;
-        if (parentId !== undefined) data.parentId = parentId;
-        if (sortOrder !== undefined) data.sortOrder = sortOrder;
-
         const category = await req.tenantPrisma!.category.update({
             where: { id },
             data,
             include: { _count: { select: { products: true } } },
         });
-        res.json(toCategoryDto({ ...category, productCount: category._count.products }));
+        return res.json(toCategoryDto({ ...category, productCount: category._count.products }));
     } catch (error: any) {
         console.error('Update category error', error);
         if (error.code === 'P2002') {
-            return res.status(400).json({ message: 'Slug already exists' });
+            try {
+                if (data.slug) {
+                    data.slug = `${data.slug}-${Date.now().toString(36)}`;
+                }
+                const category = await req.tenantPrisma!.category.update({
+                    where: { id },
+                    data,
+                    include: { _count: { select: { products: true } } },
+                });
+                return res.json(toCategoryDto({ ...category, productCount: category._count.products }));
+            } catch (retryErr) {
+                console.error('Retry update category error', retryErr);
+            }
         }
-        res.status(500).json({ message: 'Unable to update category' });
+        return res.status(500).json({ message: 'Unable to update category' });
     }
 });
 
