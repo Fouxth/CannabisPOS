@@ -62,14 +62,14 @@ export default function Customers() {
 
   const handleAddSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
+    const formData = new FormData(e.currentTarget);
     const data = {
-      name: (form.elements.namedItem('name') as HTMLInputElement).value,
-      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
-      email: (form.elements.namedItem('email') as HTMLInputElement).value || undefined,
-      lineUserId: (form.elements.namedItem('lineUserId') as HTMLInputElement).value || undefined,
-      lineDisplayName: (form.elements.namedItem('lineDisplayName') as HTMLInputElement).value || undefined,
-      notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value || undefined,
+      name: String(formData.get('name') || ''),
+      phone: String(formData.get('phone') || ''),
+      email: String(formData.get('email') || '') || undefined,
+      lineUserId: String(formData.get('lineUserId') || '') || undefined,
+      lineDisplayName: String(formData.get('lineDisplayName') || '') || undefined,
+      notes: String(formData.get('notes') || '') || undefined,
     };
     createMutation.mutate(data);
   };
