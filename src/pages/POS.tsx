@@ -443,7 +443,7 @@ export default function POS() {
         // Mobile: fixed full-screen overlay
         mobileTab === 'products'
           ? "hidden lg:flex"
-          : "flex fixed inset-x-0 top-0 bottom-16 z-40 rounded-none lg:relative lg:inset-auto lg:bottom-auto lg:rounded-lg lg:z-auto"
+          : "flex fixed inset-x-0 top-14 bottom-16 z-40 rounded-none lg:relative lg:inset-auto lg:bottom-auto lg:rounded-lg lg:z-auto"
       )}>
         <CardHeader className="pb-3 border-b mb-2">
           <div className="flex items-center justify-between">
@@ -603,7 +603,7 @@ export default function POS() {
 
       {/* Payment Dialog */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">ชำระเงิน</DialogTitle>
           </DialogHeader>
@@ -682,12 +682,13 @@ export default function POS() {
                 </div>
 
                 {/* Quick Amount Buttons */}
-                <div className="flex gap-2 flex-wrap">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2">
                   {quickAmounts.map((amount) => (
                     <Button
                       key={amount}
                       variant="outline"
                       size="sm"
+                      className="text-xs py-1 h-9"
                       onClick={() => setAmountReceived(amountReceived + amount)}
                     >
                       +{amount}
@@ -696,6 +697,7 @@ export default function POS() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="text-xs py-1 h-9 font-semibold text-primary"
                     onClick={() => setAmountReceived(Math.ceil(total / 100) * 100)}
                   >
                     พอดี
@@ -735,7 +737,7 @@ export default function POS() {
 
       {/* Discount & Surcharge Dialog */}
       <Dialog open={showDiscountDialog} onOpenChange={setShowDiscountDialog}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">ส่วนลด / ส่วนต่าง</DialogTitle>
           </DialogHeader>

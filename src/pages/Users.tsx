@@ -257,7 +257,7 @@ export default function Users() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) setEditingUser(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">
               {editingUser ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงานใหม่'}

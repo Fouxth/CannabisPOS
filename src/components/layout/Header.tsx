@@ -48,11 +48,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden h-8 w-8"
+          className="lg:hidden h-10 w-10 shrink-0 active:scale-95"
           onClick={onMenuClick}
           aria-label="เปิดเมนู"
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-5 w-5" />
         </Button>
         <div>
           <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight hidden sm:block">

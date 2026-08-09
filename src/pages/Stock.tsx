@@ -386,7 +386,7 @@ export default function Stock() {
 
       {/* Adjust Stock Dialog */}
       <Dialog open={showAdjustDialog} onOpenChange={setShowAdjustDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">ปรับปรุงสต็อก</DialogTitle>
           </DialogHeader>

@@ -307,7 +307,7 @@ export default function Expenses() {
 
             {/* Add Expense Dialog */}
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="font-display text-xl">บันทึกรายจ่าย</DialogTitle>
                     </DialogHeader>
