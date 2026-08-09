@@ -90,6 +90,7 @@ model Product {
   imageUrl    String?
   isActive    Boolean   @default(true)
   showInPos   Boolean   @default(true)
+  allowPoints Boolean   @default(true)
   totalSold   Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

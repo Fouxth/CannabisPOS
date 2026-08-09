@@ -217,7 +217,9 @@ export default function POS() {
     console.log('Payment Debug - User:', user);
     console.log('Payment Debug - User ID:', user?.id);
 
-    const pointsEarned = enablePoints ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
+    const pointsEarned = enablePoints
+      ? cart.reduce((sum, item) => sum + (item.product?.allowPoints !== false ? item.quantity : 0), 0)
+      : 0;
 
     const payload: CheckoutPayload & { customerId?: string; customerName?: string; pointsEarned?: number; pointsRedeemed?: number; enablePoints?: boolean } = {
       userId: user?.id || '', // Use authenticated user's ID
@@ -570,7 +572,7 @@ export default function POS() {
                   <p className="text-[11px] text-muted-foreground">
                     เบอร์: {selectedCustomer.phone} | สะสมแล้ว: <span className="font-bold text-foreground">{selectedCustomer.points} แต้ม</span>
                     <span className="text-emerald-600 font-semibold ml-1">
-                      (บิลนี้จะได้ +{cart.reduce((sum, item) => sum + item.quantity, 0)} แต้ม)
+                      (บิลนี้จะได้ +{cart.reduce((sum, item) => sum + (item.product?.allowPoints !== false ? item.quantity : 0), 0)} แต้ม)
                     </span>
                   </p>
                 </div>
@@ -612,7 +614,7 @@ export default function POS() {
                 {/* 10 Stamp Grid Slots */}
                 <div className="grid grid-cols-10 gap-1 text-center">
                   {Array.from({ length: 10 }).map((_, idx) => {
-                    const totalFuturePoints = selectedCustomer.points + cart.reduce((sum, item) => sum + item.quantity, 0);
+                    const totalFuturePoints = selectedCustomer.points + cart.reduce((sum, item) => sum + (item.product?.allowPoints !== false ? item.quantity : 0), 0);
                     const isCurrent = idx < (selectedCustomer.points % 10);
                     const isNew = !isCurrent && idx < (totalFuturePoints % 10 || (totalFuturePoints > 0 && totalFuturePoints % 10 === 0 ? 10 : 0));
 

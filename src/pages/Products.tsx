@@ -392,6 +392,7 @@ export default function Products() {
               minStock: parseInt((form.elements.namedItem('minStock') as HTMLInputElement).value) || 10,
               stockUnit: (form.elements.namedItem('stockUnit') as HTMLInputElement).value || 'unit',
               description: (form.elements.namedItem('description') as HTMLTextAreaElement).value || undefined,
+              allowPoints: (form.elements.namedItem('allowPoints') as HTMLInputElement)?.checked ?? true,
               isActive: true,
               showInPos: true,
             };
@@ -467,6 +468,20 @@ export default function Products() {
               <div className="space-y-2">
                 <Label htmlFor="description">คำอธิบาย</Label>
                 <Textarea id="description" name="description" defaultValue={editingProduct?.description} placeholder="รายละเอียดสินค้า..." rows={3} />
+              </div>
+
+              {/* Loyalty Points Participation Toggle */}
+              <div className="flex items-center space-x-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                <input
+                  type="checkbox"
+                  id="allowPoints"
+                  name="allowPoints"
+                  defaultChecked={editingProduct?.allowPoints !== false}
+                  className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                />
+                <Label htmlFor="allowPoints" className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 cursor-pointer">
+                  🎁 เข้าร่วมการสะสมแต้มสมาชิก (ได้รับแต้มเมื่อซื้อสินค้านี้)
+                </Label>
               </div>
             </div>
 

@@ -47,6 +47,7 @@ export interface Product {
   imageUrl?: string;
   isActive: boolean;
   showInPos: boolean;
+  allowPoints?: boolean;
   totalSold: number;
   createdAt?: string;
   updatedAt?: string;

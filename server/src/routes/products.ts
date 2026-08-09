@@ -84,7 +84,7 @@ router.post('/bulk', async (req, res) => {
 // Create product
 router.post('/', async (req, res) => {
     try {
-        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
+        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos, allowPoints } = req.body;
 
         if (!name || price === undefined || cost === undefined) {
             return res.status(400).json({ message: 'Name, price, and cost are required' });
@@ -105,6 +105,7 @@ router.post('/', async (req, res) => {
                 imageUrl,
                 isActive: isActive ?? true,
                 showInPos: showInPos ?? true,
+                allowPoints: allowPoints ?? true,
             },
             include: { category: true },
         });
@@ -119,7 +120,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos } = req.body;
+        const { name, description, price, cost, promoQuantity, promoPrice, stock, minStock, stockUnit, categoryId, imageUrl, isActive, showInPos, allowPoints } = req.body;
 
         const data: Record<string, any> = {};
         if (name !== undefined) data.name = name;
@@ -138,6 +139,7 @@ router.put('/:id', async (req, res) => {
         if (imageUrl !== undefined) data.imageUrl = imageUrl;
         if (typeof isActive === 'boolean') data.isActive = isActive;
         if (typeof showInPos === 'boolean') data.showInPos = showInPos;
+        if (typeof allowPoints === 'boolean') data.allowPoints = allowPoints;
 
         const product = await req.tenantPrisma!.product.update({
             where: { id },

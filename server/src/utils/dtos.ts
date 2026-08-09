@@ -49,6 +49,7 @@ export const toProductDto = (product: any) => ({
     imageUrl: product.imageUrl ?? undefined,
     isActive: product.isActive,
     showInPos: product.showInPos,
+    allowPoints: product.allowPoints ?? true,
     totalSold: product.totalSold ?? 0,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
