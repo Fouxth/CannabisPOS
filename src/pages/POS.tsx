@@ -73,6 +73,7 @@ export default function POS() {
   const [memberPhone, setMemberPhone] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [pointsRedeemed, setPointsRedeemed] = useState(0);
+  const [enablePoints, setEnablePoints] = useState(true);
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -216,9 +217,9 @@ export default function POS() {
     console.log('Payment Debug - User:', user);
     console.log('Payment Debug - User ID:', user?.id);
 
-    const pointsEarned = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const pointsEarned = enablePoints ? cart.reduce((sum, item) => sum + item.quantity, 0) : 0;
 
-    const payload: CheckoutPayload & { customerId?: string; customerName?: string; pointsEarned?: number; pointsRedeemed?: number } = {
+    const payload: CheckoutPayload & { customerId?: string; customerName?: string; pointsEarned?: number; pointsRedeemed?: number; enablePoints?: boolean } = {
       userId: user?.id || '', // Use authenticated user's ID
       paymentMethod: selectedPaymentMethod,
       subtotal,
@@ -235,6 +236,7 @@ export default function POS() {
       customerName: selectedCustomer?.name,
       pointsEarned,
       pointsRedeemed,
+      enablePoints,
     };
 
     console.log('Payment Debug - Payload:', payload);
@@ -490,8 +492,33 @@ export default function POS() {
         </CardHeader>
 
         {/* Member Search & Loyalty Bar */}
-        <div className="px-4 pb-3 border-b border-border/50 bg-muted/20">
-          {!selectedCustomer ? (
+        <div className="px-4 pb-3 border-b border-border/50 bg-muted/20 space-y-2">
+          {/* Per-Bill Loyalty Enable/Disable Toggle */}
+          <div className="flex items-center justify-between text-xs pt-1">
+            <span className="font-semibold text-muted-foreground flex items-center gap-1">
+              <Award className="h-3.5 w-3.5 text-primary" /> สะสมแต้มบิลนี้:
+            </span>
+            <Button
+              type="button"
+              variant={enablePoints ? 'default' : 'outline'}
+              size="sm"
+              className={`h-6 text-[11px] px-2 font-bold transition-all ${
+                enablePoints
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'text-muted-foreground border-dashed'
+              }`}
+              onClick={() => {
+                const next = !enablePoints;
+                setEnablePoints(next);
+                if (!next) setPointsRedeemed(0);
+                toast.info(next ? 'เปิดใช้งานสะสมแต้มสำหรับบิลนี้' : 'ปิดการสะสมแต้มสำหรับบิลนี้');
+              }}
+            >
+              {enablePoints ? '✓ สะสมแต้ม (เปิด)' : '✕ ไม่สะสมแต้ม (ปิด)'}
+            </Button>
+          </div>
+
+          {enablePoints && (!selectedCustomer ? (
             <div className="flex gap-2">
               <Input
                 placeholder="ค้นหาสมาชิกด้วยเบอร์โทร..."
@@ -608,7 +635,7 @@ export default function POS() {
                 </div>
               </div>
             </div>
-          )}
+          ))}
         </div>
 
         <ScrollArea className="flex-1 px-4">

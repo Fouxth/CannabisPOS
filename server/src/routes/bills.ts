@@ -200,8 +200,9 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                 },
             });
 
-            const claimToken = 'CLM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-            const totalItemsQty = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 1), 0);
+            const isPointsEnabled = req.body.enablePoints !== false;
+            const claimToken = isPointsEnabled ? ('CLM-' + Math.random().toString(36).substring(2, 8).toUpperCase()) : null;
+            const totalItemsQty = isPointsEnabled ? items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 1), 0) : 0;
 
             const bill = await tx.bill.create({
                 data: {
@@ -214,10 +215,10 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                     discountPercent: discountPercent ?? 0,
                     taxAmount: taxAmount ?? 0,
                     totalAmount,
-                    pointsEarned: req.body.pointsEarned ?? totalItemsQty,
+                    pointsEarned: isPointsEnabled ? (req.body.pointsEarned ?? totalItemsQty) : 0,
                     pointsRedeemed: req.body.pointsRedeemed ?? 0,
                     claimToken,
-                    isPointsClaimed: !!customerId, // if already credited at POS, mark claimed
+                    isPointsClaimed: !isPointsEnabled || !!customerId, // if disabled or credited, mark true
                     paymentMethod: normalizedMethod,
                     amountReceived: amountReceived ?? totalAmount,
                     changeAmount: changeAmount ?? 0,
