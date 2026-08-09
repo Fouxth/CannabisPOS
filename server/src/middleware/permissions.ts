@@ -51,6 +51,36 @@ export const PERMISSIONS = {
 export type PermissionKey = keyof typeof PERMISSIONS;
 
 /**
+ * Middleware to require SUPER_ADMIN role specifically
+ */
+export const requireSuperAdmin = (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+    if (!user) {
+        return res.status(401).json({ message: 'กรุณาเข้าสู่ระบบ' });
+    }
+    if (user.role !== UserRole.SUPER_ADMIN && user.role !== 'SUPER_ADMIN') {
+        return res.status(403).json({ message: 'ต้องใช้สิทธิ์ SUPER_ADMIN ในการดำเนินการนี้' });
+    }
+    next();
+};
+
+/**
+ * Middleware to require one of specific roles
+ */
+export const requireRole = (...roles: (UserRole | string)[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const user = (req as any).user;
+        if (!user) {
+            return res.status(401).json({ message: 'กรุณาเข้าสู่ระบบ' });
+        }
+        if (!roles.includes(user.role)) {
+            return res.status(403).json({ message: 'คุณไม่มีสิทธิ์ในการดำเนินการนี้' });
+        }
+        next();
+    };
+};
+
+/**
  * Middleware to check if user has required permission
  */
 export const requirePermission = (permission: PermissionKey) => {

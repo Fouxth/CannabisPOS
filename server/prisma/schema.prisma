@@ -21,7 +21,7 @@ model User {
   nickname      String?
   phone         String?
   avatarUrl     String?
-  password      String   @default("$2b$10$fwyhvOgLG5S2242nKhkj0.8NexG.8oY8VPaEjpUayBzJtol9ZSCnK")
+  password      String
   role          UserRole
   isActive      Boolean  @default(true)
   lastLoginAt   DateTime?

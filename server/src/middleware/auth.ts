@@ -1,9 +1,35 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const INVALID_JWT_SECRETS = [
+    'your-secret-key-change-in-production',
+    'change-this-to-a-secure-random-secret-key',
+    'change-this-secret',
+    'secret',
+    '123456',
+    'password',
+    'default_secret'
+];
 
-interface JwtPayload {
+export const getJwtSecret = (): string => {
+    const secret = process.env.JWT_SECRET;
+
+    if (process.env.NODE_ENV === 'test') {
+        return secret || 'test-jwt-secret-key-1234567890';
+    }
+
+    if (!secret || INVALID_JWT_SECRETS.includes(secret.trim().toLowerCase())) {
+        throw new Error('CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing or set to an insecure placeholder!');
+    }
+
+    if (process.env.NODE_ENV === 'production' && secret.length < 32) {
+        throw new Error('CRITICAL SECURITY ERROR: JWT_SECRET must be at least 32 characters in production!');
+    }
+
+    return secret;
+};
+
+export interface JwtPayload {
     id: string;
     username: string;
     role: string;
@@ -19,12 +45,12 @@ declare global {
 }
 
 export const generateToken = (payload: JwtPayload): string => {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+    return jwt.sign(payload, getJwtSecret(), { expiresIn: '24h' });
 };
 
 export const verifyToken = (token: string): JwtPayload | null => {
     try {
-        return jwt.verify(token, JWT_SECRET) as JwtPayload;
+        return jwt.verify(token, getJwtSecret()) as JwtPayload;
     } catch {
         return null;
     }

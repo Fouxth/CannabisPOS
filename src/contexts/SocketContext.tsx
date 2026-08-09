@@ -23,11 +23,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     useEffect(() => {
         if (isAuthenticated && user) {
+            const token = localStorage.getItem('token');
             const newSocket = io(SOCKET_URL, {
+                auth: { token },
                 reconnectionAttempts: 5,
                 timeout: 10000,
                 autoConnect: true,
-                transports: ['websocket', 'polling'], // ลอง WebSocket ก่อน fallback เป็น polling
+                transports: ['websocket', 'polling'],
             });
 
             newSocket.on('connect', () => {

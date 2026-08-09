@@ -1,5 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
+import { verifyToken, JwtPayload } from '../middleware/auth';
+import { managementPrisma } from '../lib/management-db';
 
 export class SocketService {
     private static instance: SocketService;
@@ -28,15 +30,65 @@ export class SocketService {
             transports: ['websocket', 'polling'],
         });
 
-        this.io.on('connection', (socket) => {
-            console.log('🔌 New socket connection:', socket.id);
+        // Middleware for Socket.IO authentication & tenant active verification
+        this.io.use(async (socket, next) => {
+            const token =
+                socket.handshake.auth?.token ||
+                socket.handshake.headers.authorization?.split(' ')[1];
 
-            // Join a room based on tenant and user
-            socket.on('join_room', (data: { tenantId: string, userId: string }) => {
-                if (data.tenantId) {
-                    const roomName = `tenant_${data.tenantId}`;
+            if (!token) {
+                return next(new Error('Authentication error: Access token required'));
+            }
+
+            const payload = verifyToken(token);
+            if (!payload) {
+                return next(new Error('Authentication error: Invalid or expired token'));
+            }
+
+            // CRITICAL: Check if tenant is still active in DB
+            if (payload.tenantId) {
+                try {
+                    const tenant = await managementPrisma.tenant.findUnique({
+                        where: { id: payload.tenantId },
+                        select: { isActive: true },
+                    });
+
+                    if (!tenant || !tenant.isActive) {
+                        return next(new Error('Authentication error: Shop is inactive or suspended'));
+                    }
+                } catch (error) {
+                    console.error('Socket auth tenant check error:', error);
+                    return next(new Error('Internal server error during auth check'));
+                }
+            }
+
+            socket.data.user = payload as JwtPayload;
+            next();
+        });
+
+        this.io.on('connection', (socket) => {
+            const user = socket.data.user as JwtPayload;
+            console.log(`🔌 New authenticated socket connection: ${socket.id} (User: ${user?.username}, Tenant: ${user?.tenantId})`);
+
+            // Automatically join verified tenant room & user room derived from JWT
+            if (user?.tenantId) {
+                const tenantRoom = `tenant_${user.tenantId}`;
+                socket.join(tenantRoom);
+                console.log(`👤 Socket ${socket.id} joined room: ${tenantRoom}`);
+            }
+
+            if (user?.id) {
+                const userRoom = `user_${user.id}`;
+                socket.join(userRoom);
+            }
+
+            // Secure room join handler (only allows joining own verified tenant room)
+            socket.on('join_room', (data: { tenantId?: string, userId?: string }) => {
+                if (data?.tenantId && data.tenantId === user?.tenantId) {
+                    const roomName = `tenant_${user.tenantId}`;
                     socket.join(roomName);
-                    console.log(`👤 User ${data.userId} joined room: ${roomName}`);
+                } else {
+                    console.warn(`⚠️ Socket ${socket.id} attempted to join unauthorized room for tenant ${data?.tenantId}`);
                 }
             });
 
@@ -49,14 +101,15 @@ export class SocketService {
     public sendNotification(tenantId: string, userId: string | null, notification: any) {
         if (!this.io) return;
 
-        const roomName = `tenant_${tenantId}`;
+        if (userId) {
+            const userRoom = `user_${userId}`;
+            this.io.to(userRoom).emit('notification_received', notification);
+        } else {
+            const tenantRoom = `tenant_${tenantId}`;
+            this.io.to(tenantRoom).emit('notification_received', notification);
+        }
 
-        // If userId is provided, we can target specific user if we implemented user-specific rooms
-        // For now, let's broadcast to the whole tenant room if the notification is for all or if we want simplicity
-        // Most in-app notifications in this POS seem to be store-wide or for the logged in user.
-
-        this.io.to(roomName).emit('notification_received', notification);
-        console.log(`📢 Emitted notification to room: ${roomName}`);
+        console.log(`📢 Emitted notification to tenant: ${tenantId}`);
     }
 }
 

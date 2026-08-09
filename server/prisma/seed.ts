@@ -1,5 +1,6 @@
 import { PrismaClient, PaymentType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -43,6 +44,9 @@ async function main() {
     ]);
     console.log(`✅ Created ${paymentMethods.length} payment methods`);
 
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+    const superAdminPassword = process.env.SEED_SUPERADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+
     console.log('Creating admin user...');
     const user = await prisma.user.create({
         data: {
@@ -51,26 +55,26 @@ async function main() {
             fullName: 'ผู้ดูแลระบบ',
             nickname: 'Admin',
             role: 'ADMIN',
-            password: await bcrypt.hash('admin123', 10),
+            password: await bcrypt.hash(adminPassword, 10),
             isActive: true,
         },
     });
-    console.log('✅ Created admin user');
+    console.log('✅ Created admin user (Credentials configured securely)');
 
-    console.log('Creating Super Admin user (dxv4th)...');
+    console.log('Creating Super Admin user...');
     await prisma.user.create({
         data: {
             employeeCode: 'SA001',
-            username: 'dxv4th',
+            username: 'sysadmin',
             fullName: 'System Owner',
-            nickname: 'Dev4th',
+            nickname: 'Dev',
             role: 'SUPER_ADMIN',
-            password: await bcrypt.hash('@dev4th', 10),
+            password: await bcrypt.hash(superAdminPassword, 10),
             isActive: true,
-            avatarUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', // Optional: distinctive avatar
+            avatarUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
         },
     });
-    console.log('✅ Created Super Admin user (dxv4th)');
+    console.log('✅ Created Super Admin user (Credentials configured securely)');
 
     console.log('Creating basic categories...');
     const categoryData = [

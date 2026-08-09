@@ -24,7 +24,7 @@ import { paymentMethodsRouter } from './routes/paymentMethods';
 import { promotionsRouter } from './routes/promotions';
 import { auditLogsRouter } from './routes/auditLogs';
 import { analyticsRouter } from './routes/analytics';
-import { getUserPermissions } from './middleware/permissions';
+import { getUserPermissions, requirePermission } from './middleware/permissions';
 import { backupRouter } from './routes/backup';
 
 import { createServer } from 'http';
@@ -57,14 +57,14 @@ app.use(
 );
 app.use(express.json());
 
-// Management API (No tenant resolution needed)
-app.use('/api/management', managementRouter);
-
 // Auth routes (Public, no auth/tenant needed)
 app.use('/api/auth', authRouter);
 
 // Apply auth middleware to all routes below
 app.use('/api', authenticateToken);
+
+// Management API (Protected by authenticateToken and requireSuperAdmin)
+app.use('/api/management', managementRouter);
 
 // Apply tenant resolver (Uses req.user from auth middleware)
 app.use(tenantResolver);
@@ -87,10 +87,14 @@ app.use('/api/analytics', analyticsRouter);
 app.get('/api/permissions', getUserPermissions);
 app.use('/api/backup', backupRouter);
 
-// Reset endpoint
-app.post('/api/reset', async (req, res) => {
+// Reset endpoint (Strictly protected for SUPER_ADMIN or OWNER)
+app.post('/api/reset', requirePermission('MANAGE_BACKUP'), async (req, res) => {
     try {
-        await req.tenantPrisma!.$transaction(async (tx) => {
+        if (!req.tenantPrisma || !req.tenantId) {
+            return res.status(400).json({ message: 'Tenant context missing' });
+        }
+
+        await req.tenantPrisma.$transaction(async (tx) => {
             // Delete dependent records first
             await tx.saleItem.deleteMany({});
             await tx.billItem.deleteMany({});
@@ -103,6 +107,18 @@ app.post('/api/reset', async (req, res) => {
             // Reset product totalSold
             await tx.product.updateMany({
                 data: { totalSold: 0 },
+            });
+
+            // Write Audit Log entry
+            await tx.auditLog.create({
+                data: {
+                    tenantId: req.tenantId!,
+                    userId: req.user?.id || 'system',
+                    action: 'DATA_RESET',
+                    entity: 'TenantData',
+                    entityId: req.tenantId,
+                    newValue: { resetAt: new Date().toISOString(), resetBy: req.user?.username }
+                }
             });
         });
 

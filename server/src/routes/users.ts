@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { toUserDto } from '../utils/dtos';
+import { managementPrisma } from '../lib/management-db';
+import { requirePermission, hasPermission } from '../middleware/permissions';
 
 const router = Router();
 
 // Get all users
-router.get('/', async (req, res) => {
+router.get('/', requirePermission('VIEW_USERS'), async (req, res) => {
     try {
         const users = await req.tenantPrisma!.user.findMany({
             orderBy: { createdAt: 'desc' },
@@ -21,6 +23,13 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const currentUser = req.user;
+
+        // Allow self view or require VIEW_USERS
+        if (currentUser?.id !== id && !hasPermission(currentUser?.role as any, 'VIEW_USERS')) {
+            return res.status(403).json({ message: 'คุณไม่มีสิทธิ์ในการดูข้อมูลผู้ใช้อื่น' });
+        }
+
         const user = await req.tenantPrisma!.user.findUnique({
             where: { id },
         });
@@ -34,12 +43,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-import { managementPrisma } from '../lib/management-db';
-
-// ... existing imports ...
-
 // Create user
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('MANAGE_USERS'), async (req, res) => {
     try {
         const { employeeCode, username, fullName, nickname, phone, avatarUrl, password, role } = req.body;
         const currentUser = req.user;
@@ -50,6 +55,11 @@ router.post('/', async (req, res) => {
 
         if (!currentUser?.tenantId) {
             return res.status(403).json({ message: 'Only tenant users can create employees' });
+        }
+
+        // Prevent privilege escalation: non-SUPER_ADMIN cannot create SUPER_ADMIN
+        if (role === 'SUPER_ADMIN' && currentUser.role !== 'SUPER_ADMIN') {
+            return res.status(403).json({ message: 'ไม่สามารถสร้างผู้ใช้สิทธิ์ SUPER_ADMIN ได้' });
         }
 
         const normalizedUsername = username.toLowerCase();
@@ -76,7 +86,7 @@ router.post('/', async (req, res) => {
             data: {
                 username: normalizedUsername,
                 password: hashedPassword,
-                role: role, // Storing as string
+                role: role,
                 tenantId: currentUser.tenantId,
                 isActive: true
             }
@@ -86,7 +96,7 @@ router.post('/', async (req, res) => {
         try {
             const user = await req.tenantPrisma!.user.create({
                 data: {
-                    id: centralUser.id, // Use same ID
+                    id: centralUser.id,
                     employeeCode,
                     username: normalizedUsername,
                     fullName,
@@ -99,7 +109,6 @@ router.post('/', async (req, res) => {
             });
             res.status(201).json(toUserDto(user));
         } catch (tenantError: any) {
-            // Rollback Management DB creation if Tenant DB fails
             console.error('Tenant DB creation failed, rolling back central user...', tenantError);
             await managementPrisma.user.delete({ where: { id: centralUser.id } });
 
@@ -119,44 +128,68 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const currentUser = req.user;
         const { employeeCode, username, fullName, nickname, phone, avatarUrl, password, role, isActive } = req.body;
 
+        const isSelf = currentUser?.id === id;
+        const canManage = hasPermission(currentUser?.role as any, 'MANAGE_USERS');
+
+        if (!isSelf && !canManage) {
+            return res.status(403).json({ message: 'คุณไม่มีสิทธิ์แก้ไขข้อมูลผู้ใช้อื่น' });
+        }
+
+        // Verify user exists in current tenant
+        const existingTenantUser = await req.tenantPrisma!.user.findUnique({
+            where: { id },
+        });
+
+        if (!existingTenantUser) {
+            return res.status(404).json({ message: 'User not found in tenant' });
+        }
+
         const data: Record<string, any> = {};
-        if (employeeCode !== undefined) data.employeeCode = employeeCode;
-        if (username !== undefined) data.username = username.toLowerCase();
+
+        if (canManage) {
+            if (employeeCode !== undefined) data.employeeCode = employeeCode;
+            if (username !== undefined) data.username = username.toLowerCase();
+            if (role !== undefined) {
+                if (role === 'SUPER_ADMIN' && currentUser?.role !== 'SUPER_ADMIN') {
+                    return res.status(403).json({ message: 'ไม่สามารถมอบสิทธิ์ SUPER_ADMIN ได้' });
+                }
+                data.role = role;
+            }
+            if (typeof isActive === 'boolean') data.isActive = isActive;
+            if (password) {
+                data.password = await bcrypt.hash(password, 10);
+            }
+        }
+
+        // Safe profile fields accessible to self or admin
         if (fullName !== undefined) data.fullName = fullName;
         if (nickname !== undefined) data.nickname = nickname;
         if (phone !== undefined) data.phone = phone;
         if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
-        if (role !== undefined) data.role = role;
-        if (typeof isActive === 'boolean') data.isActive = isActive;
-        if (password) {
-            data.password = await bcrypt.hash(password, 10);
-        }
 
-        // Update in BOTH databases to keep them in sync (especially for login data)
-        const [updatedUser] = await Promise.all([
-            req.tenantPrisma!.user.update({
-                where: { id },
-                data,
-            }),
-            managementPrisma.user.update({
-                where: { id },
+        // Update in Tenant DB
+        const updatedUser = await req.tenantPrisma!.user.update({
+            where: { id },
+            data,
+        });
+
+        // Sync with Management DB (with tenant check!)
+        if (currentUser?.tenantId) {
+            await managementPrisma.user.updateMany({
+                where: { id, tenantId: currentUser.tenantId },
                 data: {
-                    // Sync only relevant fields to central DB
                     ...(data.username && { username: data.username }),
                     ...(data.password && { password: data.password }),
+                    ...(data.role && { role: data.role }),
                     ...(data.isActive !== undefined && { isActive: data.isActive }),
-                    // Note: Management DB might not have all fields like nickname/phone/avatarUrl if schema differs
-                    // But assuming it does based on User interface in Auth
                 },
             }).catch(err => {
-                console.warn('Failed to update central user, but proceeding:', err);
-                // Don't fail the request if central update fails (e.g. schema mismatch)
-                // But ideally we should keep them in sync.
-                return null;
-            })
-        ]);
+                console.warn('Failed to sync central user:', err);
+            });
+        }
 
         res.json(toUserDto(updatedUser));
     } catch (error: any) {
@@ -176,7 +209,7 @@ router.put('/:id/password', async (req, res) => {
         const currentUser = req.user;
 
         // Security Check: Only allow self-update or Admin
-        if (currentUser?.id !== id && currentUser?.role !== 'SUPER_ADMIN' && currentUser?.role !== 'ADMIN') {
+        if (currentUser?.id !== id && currentUser?.role !== 'SUPER_ADMIN' && currentUser?.role !== 'ADMIN' && currentUser?.role !== 'OWNER') {
             return res.status(403).json({ message: 'ไม่มีสิทธิ์ในการเปลี่ยนรหัสผ่านของผู้อื่น' });
         }
 
@@ -192,9 +225,9 @@ router.put('/:id/password', async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Verify current password (Check against Management DB as it is the auth source)
-        const centralUser = await managementPrisma.user.findUnique({
-            where: { id },
+        // Verify current password against Management DB
+        const centralUser = await managementPrisma.user.findFirst({
+            where: { id, tenantId: currentUser?.tenantId || undefined },
         });
 
         if (!centralUser) {
@@ -210,8 +243,8 @@ router.put('/:id/password', async (req, res) => {
 
         // Update in BOTH databases to keep them in sync
         await Promise.all([
-            managementPrisma.user.update({
-                where: { id },
+            managementPrisma.user.updateMany({
+                where: { id, tenantId: currentUser?.tenantId || undefined },
                 data: { password: hashedPassword },
             }),
             req.tenantPrisma!.user.update({
@@ -228,12 +261,39 @@ router.put('/:id/password', async (req, res) => {
 });
 
 // Delete user
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('MANAGE_USERS'), async (req, res) => {
     try {
         const { id } = req.params;
+        const currentUser = req.user;
+
+        if (currentUser?.id === id) {
+            return res.status(400).json({ message: 'ไม่สามารถลบบัญชีผู้ใช้ของตัวเองได้' });
+        }
+
+        const targetTenantUser = await req.tenantPrisma!.user.findUnique({
+            where: { id },
+        });
+
+        if (!targetTenantUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (targetTenantUser.role === 'SUPER_ADMIN') {
+            return res.status(403).json({ message: 'ไม่สามารถลบบัญชี SUPER_ADMIN ได้' });
+        }
+
+        // Delete from tenant DB
         await req.tenantPrisma!.user.delete({
             where: { id },
         });
+
+        // Delete from central management DB with tenant filter
+        if (currentUser?.tenantId) {
+            await managementPrisma.user.deleteMany({
+                where: { id, tenantId: currentUser.tenantId },
+            }).catch(err => console.warn('Failed to delete central user record:', err));
+        }
+
         res.json({ message: 'User deleted successfully' });
     } catch (error) {
         console.error('Delete user error', error);

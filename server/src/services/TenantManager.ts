@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { managementPrisma } from '../lib/management-db';
-import { prisma } from '../lib/db';
+import { createTenantScopedPrisma } from '../lib/db';
 
 export class TenantManager {
     static async getTenantClientById(tenantId: string): Promise<PrismaClient | null> {
@@ -13,7 +13,7 @@ export class TenantManager {
             return null;
         }
 
-        // Return the single shared database client (targets cannabispos_d4)
-        return prisma;
+        // Return a client strictly scoped to this tenant ID
+        return createTenantScopedPrisma(tenantId);
     }
 }

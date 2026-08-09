@@ -5,13 +5,17 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { socketService } from '../services/SocketService';
 
-import { prisma } from '../lib/db';
+import { prisma, createTenantScopedPrisma } from '../lib/db';
+import { requireSuperAdmin } from '../middleware/permissions';
 
 const router = express.Router();
 
+// Enforce SUPER_ADMIN for all management operations
+router.use(requireSuperAdmin);
+
 // Helper function to get tenant's Prisma client
 async function getTenantPrisma(tenantId: string) {
-    return prisma;
+    return createTenantScopedPrisma(tenantId);
 }
 
 // GET /api/management/db-status - Database connection status check
