@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft, Box, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Search, Grid3X3, List, Plus, Minus, Trash2, Percent, Receipt, CreditCard, Banknote, QrCode, ArrowRightLeft, Box, ShoppingCart, TrendingUp, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
