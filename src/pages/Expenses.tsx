@@ -222,7 +222,57 @@ export default function Expenses() {
             {/* Expenses Table */}
             <Card className="glass">
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    {/* Mobile Card View (< sm) */}
+                    <div className="divide-y block sm:hidden">
+                        {filteredExpenses.length === 0 ? (
+                            <p className="text-center py-8 text-muted-foreground text-sm">ไม่พบรายจ่าย</p>
+                        ) : (
+                            filteredExpenses.map((expense) => {
+                                const category = EXPENSE_CATEGORIES.find((c) => c.value === expense.category);
+
+                                return (
+                                    <div key={expense.id} className="p-3.5 space-y-2">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p className="font-semibold text-sm leading-tight">{expense.title}</p>
+                                                <p className="text-xs text-muted-foreground mt-0.5">{formatDate(expense.date)}</p>
+                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-1" aria-label={`ตัวเลือกสำหรับ ${expense.title}`}>
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteExpense(expense)}>
+                                                        <Trash2 className="h-4 w-4 mr-2" /> ลบ
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+                                            {category && (
+                                                <Badge
+                                                    variant="secondary"
+                                                    className="text-[10px] px-2 py-0.5"
+                                                    style={{ backgroundColor: `${category.color}20`, color: category.color }}
+                                                >
+                                                    {category.label}
+                                                </Badge>
+                                            )}
+                                            <span className="font-bold text-expense text-sm">
+                                                -฿{formatCurrency(expense.amount)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Desktop Table (>= sm) */}
+                    <div className="overflow-x-auto hidden sm:block">
                     <Table>
                         <TableHeader>
                             <TableRow>

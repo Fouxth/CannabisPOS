@@ -319,7 +319,7 @@ export default function Bills() {
                                             </div>
 
                                             {/* Bottom Section: Payment + Amount + Action */}
-                                            <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto pl-[4rem] md:pl-0">
+                                            <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto pt-2 border-t md:border-t-0 md:pt-0">
                                                 {/* Payment Method */}
                                                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted shrink-0">
                                                     <PaymentIcon className="h-4 w-4" />

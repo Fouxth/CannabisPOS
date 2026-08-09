@@ -236,7 +236,67 @@ export default function Stock() {
           {/* Stock Table */}
           <Card className="glass">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Mobile Card View (< sm) */}
+              <div className="divide-y block sm:hidden">
+                {filteredProducts.map((product) => {
+                  const isLowStock = product.stock <= product.minStock;
+                  const isOutOfStock = product.stock === 0;
+                  const stockValue = product.stock * product.cost;
+
+                  return (
+                    <div key={product.id} className="p-3.5 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm leading-tight">{product.name}</p>
+                        {isOutOfStock ? (
+                          <Badge variant="destructive">หมด</Badge>
+                        ) : isLowStock ? (
+                          <Badge variant="outline" className="border-warning text-warning">ใกล้หมด</Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-success text-success">ปกติ</Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+                        <div>
+                          <span className="text-muted-foreground">สต็อก: </span>
+                          <span className={cn(
+                            'font-bold text-sm',
+                            isOutOfStock ? 'text-destructive' : isLowStock ? 'text-warning' : 'text-foreground'
+                          )}>
+                            {product.stock} {product.stockUnit}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">มูลค่า: </span>
+                          <span className="font-semibold">฿{formatCurrency(stockValue)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-8 text-xs gap-1"
+                          onClick={() => { setSelectedProduct(product); setAdjustmentType('add'); setShowAdjustDialog(true); }}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> เติมสต็อก
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-8 text-xs gap-1"
+                          onClick={() => { setSelectedProduct(product); setAdjustmentType('subtract'); setShowAdjustDialog(true); }}
+                        >
+                          <Minus className="h-3.5 w-3.5" /> ลดสต็อก
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table (>= sm) */}
+              <div className="overflow-x-auto hidden sm:block">
               <Table>
                 <TableHeader>
                   <TableRow>

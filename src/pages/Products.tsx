@@ -210,7 +210,66 @@ export default function Products() {
       {/* Products Table */}
       <Card className="glass">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Mobile Card View (< sm) */}
+          <div className="divide-y block sm:hidden">
+            {filteredProducts.map((product) => {
+              const category = categories.find((c) => c.id === product.categoryId) || product.category;
+              const isLowStock = product.stock <= product.minStock;
+
+              return (
+                <div key={product.id} className="p-3.5 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-sm leading-tight">{product.name}</p>
+                      {category && (
+                        <Badge
+                          variant="secondary"
+                          className="mt-1 text-[10px] px-2 py-0.5 font-medium"
+                          style={{ backgroundColor: `${category.color}20`, color: category.color }}
+                        >
+                          {category.name}
+                        </Badge>
+                      )}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-1" aria-label={`ตัวเลือกสำหรับ ${product.name}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => { setEditingProduct(product); setShowAddDialog(true); }}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          แก้ไข
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteProduct(product)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          ลบ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-border/40">
+                    <div>
+                      <span className="text-muted-foreground">ราคา: </span>
+                      <span className="font-bold text-primary text-sm">฿{formatCurrency(product.price)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">สต็อก: </span>
+                      <span className={isLowStock ? 'font-bold text-destructive' : 'font-semibold'}>
+                        {product.stock} {product.stockUnit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table (>= sm) */}
+          <div className="overflow-x-auto hidden sm:block">
           <Table>
             <TableHeader>
               <TableRow>
