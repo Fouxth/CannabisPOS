@@ -177,9 +177,99 @@ customersRouter.post('/:id/points', async (req: Request, res: Response) => {
       smsService.sendAlert('realtimeSales' as any, msg, req.tenantPrisma);
     }
 
-    res.json(updatedCustomer);
+/**
+ * POST /api/customers/claim-qr
+ * Claim loyalty points via QR Code claimToken
+ */
+customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
+  try {
+    const { claimToken, phone, lineUserId, name } = req.body;
+
+    if (!claimToken) {
+      return res.status(400).json({ message: 'ไม่พบ Claim Token' });
+    }
+
+    const bill = await req.tenantPrisma.bill.findUnique({
+      where: { claimToken: String(claimToken).trim() },
+    });
+
+    if (!bill) {
+      return res.status(404).json({ message: 'ไม่พบบิลตาม QR Code นี้' });
+    }
+
+    if (bill.isPointsClaimed) {
+      return res.status(400).json({ message: 'บิลนี้ถูกสะสมแต้มไปเรียบร้อยแล้ว' });
+    }
+
+    const earned = bill.pointsEarned > 0 ? bill.pointsEarned : Math.floor(Number(bill.totalAmount) / 100);
+
+    // Find or create customer
+    let customer = await req.tenantPrisma.customer.findFirst({
+      where: {
+        OR: [
+          phone ? { phone: String(phone).trim() } : undefined,
+          lineUserId ? { lineUserId: String(lineUserId).trim() } : undefined,
+        ].filter(Boolean) as any[],
+      },
+    });
+
+    if (!customer) {
+      customer = await req.tenantPrisma.customer.create({
+        data: {
+          tenantId: req.tenantId || 'default',
+          name: name || (phone ? `ลูกค้า ${phone}` : 'สมาชิก LINE'),
+          phone: phone ? String(phone).trim() : `line_${Date.now()}`,
+          lineUserId: lineUserId || null,
+        },
+      });
+    }
+
+    const newPoints = customer.points + earned;
+
+    await req.tenantPrisma.$transaction([
+      req.tenantPrisma.customer.update({
+        where: { id: customer.id },
+        data: {
+          points: newPoints,
+          totalSpent: { increment: bill.totalAmount },
+          ...(lineUserId ? { lineUserId } : {}),
+        },
+      }),
+      req.tenantPrisma.pointTransaction.create({
+        data: {
+          tenantId: req.tenantId || 'default',
+          customerId: customer.id,
+          billId: bill.id,
+          type: 'EARN',
+          pointsChange: earned,
+          balanceAfter: newPoints,
+          description: `สแกน QR Code รับแต้มจากบิล ${bill.billNumber}`,
+        },
+      }),
+      req.tenantPrisma.bill.update({
+        where: { id: bill.id },
+        data: {
+          isPointsClaimed: true,
+          customerId: customer.id,
+        },
+      }),
+    ]);
+
+    // Send LINE Push if lineUserId exists
+    if (lineUserId || customer.lineUserId) {
+      const lineMsg = `🎉 สแกน QR สะสมแต้มสำเร็จ!\n🧾 บิลเลขที่: ${bill.billNumber}\n✨ ได้รับแต้มเพิ่ม: +${earned} แต้ม\n💎 แต้มสะสมคงเหลือ: ${newPoints} แต้ม`;
+      smsService.sendAlert('realtimeSales' as any, lineMsg, req.tenantPrisma);
+    }
+
+    res.json({
+      success: true,
+      message: `สะสมแต้มสำเร็จ! ได้รับ +${earned} แต้ม`,
+      pointsEarned: earned,
+      currentPoints: newPoints,
+    });
   } catch (error: any) {
-    console.error('Adjust points error:', error);
-    res.status(500).json({ message: error.message || 'Error adjusting points' });
+    console.error('Claim QR error:', error);
+    res.status(500).json({ message: error.message || 'Error claiming points' });
   }
 });
+

@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Printer, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface BillReceiptProps {
     bill: Bill;
@@ -156,6 +157,27 @@ export function BillReceipt({ bill, storeName = 'CannabisPOS', onClose, showClos
                             <div className="text-sm">
                                 <p className="text-muted-foreground mb-1">หมายเหตุ:</p>
                                 <p>{bill.notes}</p>
+                            </div>
+                        </>
+                    )}
+
+                    {/* LINE Loyalty QR Code */}
+                    {bill.claimToken && !bill.isPointsClaimed && (
+                        <>
+                            <Separator />
+                            <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-center space-y-2">
+                                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                    🎁 สแกน QR Code เพื่อสะสมแต้มสมาชิก
+                                </p>
+                                <div className="p-2 bg-white rounded-md shadow-sm">
+                                    <QRCodeSVG
+                                        value={`${window.location.origin}/claim?token=${bill.claimToken}`}
+                                        size={120}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                    รหัสสะสมแต้ม: {bill.claimToken} (ได้รับ +{bill.pointsEarned || Math.floor(bill.totalAmount / 100)} แต้ม)
+                                </p>
                             </div>
                         </>
                     )}

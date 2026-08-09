@@ -200,6 +200,9 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                 },
             });
 
+            const claimToken = 'CLM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const totalItemsQty = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 1), 0);
+
             const bill = await tx.bill.create({
                 data: {
                     billNumber,
@@ -211,8 +214,10 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                     discountPercent: discountPercent ?? 0,
                     taxAmount: taxAmount ?? 0,
                     totalAmount,
-                    pointsEarned: req.body.pointsEarned ?? 0,
+                    pointsEarned: req.body.pointsEarned ?? totalItemsQty,
                     pointsRedeemed: req.body.pointsRedeemed ?? 0,
+                    claimToken,
+                    isPointsClaimed: !!customerId, // if already credited at POS, mark claimed
                     paymentMethod: normalizedMethod,
                     amountReceived: amountReceived ?? totalAmount,
                     changeAmount: changeAmount ?? 0,

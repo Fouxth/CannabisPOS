@@ -22,6 +22,7 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Promotions from "./pages/Promotions";
 import Customers from "./pages/Customers";
+import ClaimPoints from "./pages/ClaimPoints";
 import Suspended from "./pages/Suspended";
 import TenantDashboard from "./pages/admin/TenantDashboard";
 import TenantDetails from "./pages/admin/TenantDetails";
@@ -59,6 +60,7 @@ const App = () => (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/suspended" element={<Suspended />} />
+              <Route path="/claim" element={<ClaimPoints />} />
               <Route path="/" element={<RootRedirect />} />
 
               {/* Admin Routes */}

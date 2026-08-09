@@ -298,6 +298,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  claimPointsQr: (data: { claimToken: string; phone?: string; lineUserId?: string; name?: string }) =>
+    request<any>('/customers/claim-qr', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   // Network Printer API
   sendNetworkPrint: (data: { ipAddress: string; port?: number; base64Data: string }) =>
     request<{ message: string }>('/printer/network-print', {
