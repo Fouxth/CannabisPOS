@@ -334,9 +334,17 @@ export interface AppNotificationSettings {
   sound: boolean;
 }
 
+export interface LoyaltySettings {
+  enabled: boolean;
+  rewardThreshold: number;
+  rewardDescription: string;
+  defaultProductEarnPoints: boolean;
+}
+
 export interface SettingsResponse {
   store: StoreSettings;
   pos: PosSettings;
   sms: SmsSettings;
   notifications: AppNotificationSettings;
+  loyalty: LoyaltySettings;
 }

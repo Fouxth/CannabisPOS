@@ -44,6 +44,12 @@ export const DEFAULT_SETTINGS = {
         salesTargetAmount: 10000,
         sound: true,
     },
+    loyalty: {
+        enabled: true,
+        rewardThreshold: 10,
+        rewardDescription: 'แลกรับของรางวัล 1 สิทธิ์',
+        defaultProductEarnPoints: true,
+    },
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;

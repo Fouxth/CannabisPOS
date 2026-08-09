@@ -12,6 +12,7 @@ import {
   Database,
   Download,
   Trash2,
+  Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import {
   AppNotificationSettings,
+  LoyaltySettings,
   PaymentMethod,
   PosSettings,
   SettingsResponse,
@@ -73,7 +75,7 @@ const LoadingState = () => (
   </div>
 );
 
-type SettingsSection = 'store' | 'pos' | 'sms' | 'notifications';
+type SettingsSection = 'store' | 'pos' | 'sms' | 'notifications' | 'loyalty';
 
 export default function Settings() {
   const queryClient = useQueryClient();
@@ -90,6 +92,7 @@ export default function Settings() {
   const [posForm, setPosForm] = useState<PosSettings>();
   const [smsForm, setSmsForm] = useState<SmsSettings>();
   const [notificationForm, setNotificationForm] = useState<AppNotificationSettings>();
+  const [loyaltyForm, setLoyaltyForm] = useState<LoyaltySettings>();
   const [smsRecipientsText, setSmsRecipientsText] = useState('');
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
@@ -99,6 +102,7 @@ export default function Settings() {
       setPosForm(settings.pos);
       setSmsForm(settings.sms);
       setNotificationForm(settings.notifications);
+      setLoyaltyForm(settings.loyalty);
       setSmsRecipientsText(settings.sms.recipients.join(', '));
     }
   }, [settings]);
@@ -157,6 +161,8 @@ export default function Settings() {
       });
     } else if (section === 'notifications' && notificationForm) {
       settingMutation.mutate({ section, data: notificationForm });
+    } else if (section === 'loyalty' && loyaltyForm) {
+      settingMutation.mutate({ section, data: loyaltyForm });
     }
   };
 
@@ -235,6 +241,10 @@ export default function Settings() {
             <TabsTrigger value="pos" className="flex items-center gap-2 text-xs sm:text-sm">
               <Receipt className="h-4 w-4" />
               <span>POS</span>
+            </TabsTrigger>
+            <TabsTrigger value="loyalty" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Award className="h-4 w-4 text-emerald-500" />
+              <span>สะสมแต้ม</span>
             </TabsTrigger>
             <TabsTrigger value="payment" className="flex items-center gap-2 text-xs sm:text-sm">
               <CreditCard className="h-4 w-4" />
@@ -465,6 +475,97 @@ export default function Settings() {
               disabled={settingMutation.isPending}
             >
               บันทึกการเปลี่ยนแปลง
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* Loyalty Points Settings */}
+        <TabsContent value="loyalty" className="space-y-6">
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-display text-xl">
+                <Award className="h-5 w-5 text-emerald-500" />
+                ตั้งค่าระบบสมาชิก & สะสมแต้ม
+              </CardTitle>
+              <CardDescription>
+                จัดการเงื่อนไขการสะสมแต้ม การแลกรับของรางวัล และการสะสมแต้มผ่าน QR Code
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">เปิดใช้งานระบบสะสมแต้มในร้าน</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    อนุญาตให้สแกน QR Code บนใบเสร็จ และแสดงบัตรสะสมแต้มที่หน้า POS
+                  </p>
+                </div>
+                <Switch
+                  checked={loyaltyForm?.enabled ?? true}
+                  onCheckedChange={(checked) =>
+                    setLoyaltyForm((prev) => (prev ? { ...prev, enabled: checked } : undefined))
+                  }
+                />
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="rewardThreshold">จำนวนแต้มที่ใช้แลกของรางวัล (ดวง)</Label>
+                  <Input
+                    id="rewardThreshold"
+                    type="number"
+                    value={loyaltyForm?.rewardThreshold ?? 10}
+                    onChange={(e) =>
+                      setLoyaltyForm((prev) =>
+                        prev ? { ...prev, rewardThreshold: parseInt(e.target.value) || 10 } : undefined
+                      )
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">เช่น สะสมครบ 10 ดวงเพื่อรับสิทธิ์แลกรางวัล 1 สิทธิ์</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rewardDescription">รายละเอียดของรางวัล</Label>
+                  <Input
+                    id="rewardDescription"
+                    value={loyaltyForm?.rewardDescription || ''}
+                    onChange={(e) =>
+                      setLoyaltyForm((prev) =>
+                        prev ? { ...prev, rewardDescription: e.target.value } : undefined
+                      )
+                    }
+                    placeholder="เช่น แลกรับส่วนลดพิเศษ หรือรับสินค้าฟรี 1 ชิ้น"
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-semibold">แจกแต้มสินค้าใหม่เป็นค่าเริ่มต้น</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    เมื่อเพิ่มสินค้าใหม่ในระบบ สินค้านั้นจะถูกตั้งค่าให้แจกแต้มสะสมโดยอัตโนมัติ
+                  </p>
+                </div>
+                <Switch
+                  checked={loyaltyForm?.defaultProductEarnPoints ?? true}
+                  onCheckedChange={(checked) =>
+                    setLoyaltyForm((prev) => (prev ? { ...prev, defaultProductEarnPoints: checked } : undefined))
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => handleSave('loyalty')}
+              className="gradient-primary text-primary-foreground shadow-glow"
+              disabled={settingMutation.isPending}
+            >
+              บันทึกการตั้งค่าระบบสะสมแต้ม
             </Button>
           </div>
         </TabsContent>
