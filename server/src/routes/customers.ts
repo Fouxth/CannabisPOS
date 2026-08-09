@@ -177,7 +177,12 @@ customersRouter.post('/:id/points', async (req: Request, res: Response) => {
       smsService.sendAlert('realtimeSales' as any, msg, req.tenantPrisma);
     }
 
-/**
+    res.json(updatedCustomer);
+  } catch (error: any) {
+    console.error('Adjust points error:', error);
+    res.status(500).json({ message: error.message || 'Error adjusting points' });
+  }
+});
  * POST /api/customers/claim-qr
  * Claim loyalty points via QR Code claimToken
  */
