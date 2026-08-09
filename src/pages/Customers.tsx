@@ -127,20 +127,34 @@ export default function Customers() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Under Development Banner */}
-      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-medium flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🚧</span>
-          <span><strong>ระบบสะสมแต้มกำลังพัฒนา:</strong> ระบบสมาชิกและการสะสมแต้มผ่าน LINE อยู่ระหว่างการพัฒนาและปรับปรุงระบบเพิ่มเติม</span>
-        </div>
-        <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 shrink-0">
-          Under Development
-        </Badge>
+    <div className="relative min-h-[600px] overflow-hidden">
+      {/* Under Development Overlay */}
+      <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-background/50 backdrop-blur-md">
+        <Card className="max-w-md w-full glass shadow-2xl border-amber-500/40 bg-background/90 backdrop-blur-xl p-8 space-y-4 relative overflow-hidden animate-fade-in">
+          <div className="absolute top-0 right-0 w-32 h-32 -mr-10 -mt-10 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto ring-8 ring-amber-500/10">
+            <Award className="h-8 w-8" />
+          </div>
+
+          <div className="space-y-2">
+            <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1 font-semibold">
+              🚧 Under Development
+            </Badge>
+            <h2 className="text-2xl font-bold font-display text-foreground pt-1">
+              ระบบสะสมแต้มกำลังพัฒนา
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              ระบบสมาชิกและการสะสมแต้มผ่าน LINE อยู่ระหว่างการปรับปรุงและพัฒนาเพิ่มเติม ขออภัยในความไม่สะดวกครับ
+            </p>
+          </div>
+        </Card>
       </div>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Blurred Background Content */}
+      <div className="space-y-6 animate-fade-in filter blur-[6px] pointer-events-none select-none opacity-30">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-display flex items-center gap-2">
             <Award className="h-6 w-6 text-primary" />
@@ -365,6 +379,7 @@ export default function Customers() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

@@ -242,6 +242,10 @@ export default function Settings() {
               <Receipt className="h-4 w-4" />
               <span>POS</span>
             </TabsTrigger>
+            <TabsTrigger value="loyalty" className="flex items-center gap-2 text-xs sm:text-sm text-amber-500">
+              <Award className="h-4 w-4 text-amber-500" />
+              <span>สะสมแต้ม</span>
+            </TabsTrigger>
             <TabsTrigger value="payment" className="flex items-center gap-2 text-xs sm:text-sm">
               <CreditCard className="h-4 w-4" />
               <span>การชำระเงิน</span>
@@ -472,6 +476,61 @@ export default function Settings() {
             >
               บันทึกการเปลี่ยนแปลง
             </Button>
+          </div>
+        </TabsContent>
+
+        {/* Loyalty Points Settings (Blurred Under Development) */}
+        <TabsContent value="loyalty" className="space-y-6">
+          <div className="relative min-h-[450px] overflow-hidden rounded-xl">
+            {/* Under Development Overlay */}
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-background/50 backdrop-blur-md">
+              <Card className="max-w-md w-full glass shadow-2xl border-amber-500/40 bg-background/90 backdrop-blur-xl p-8 space-y-4 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 -mr-10 -mt-10 bg-amber-500/20 rounded-full blur-2xl pointer-events-none" />
+                
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center mx-auto ring-8 ring-amber-500/10">
+                  <Award className="h-8 w-8" />
+                </div>
+
+                <div className="space-y-2">
+                  <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1 font-semibold">
+                    🚧 Under Development
+                  </Badge>
+                  <h2 className="text-2xl font-bold font-display text-foreground pt-1">
+                    ระบบสะสมแต้มกำลังพัฒนา
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    การตั้งค่าระบบสมาชิกและการสะสมแต้มผ่าน LINE อยู่ระหว่างการปรับปรุงและพัฒนาเพิ่มเติม
+                  </p>
+                </div>
+              </Card>
+            </div>
+
+            {/* Blurred Background Settings */}
+            <div className="filter blur-[6px] pointer-events-none select-none opacity-30">
+              <Card className="glass">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 font-display text-xl">
+                    <Award className="h-5 w-5 text-emerald-500" />
+                    ตั้งค่าระบบสมาชิก & สะสมแต้ม
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-semibold">เปิดใช้งานระบบสะสมแต้มในร้าน</Label>
+                    </div>
+                    <Switch checked={false} />
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="rewardThreshold">จำนวนแต้มที่ใช้แลกของรางวัล</Label>
+                      <Input id="rewardThreshold" type="number" value={10} readOnly />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
