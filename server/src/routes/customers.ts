@@ -21,7 +21,7 @@ customersRouter.get('/', async (req: Request, res: Response) => {
       ];
     }
 
-    const customers = await req.tenantPrisma.customer.findMany({
+    const customers = await req.tenantPrisma!.customer.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -47,7 +47,7 @@ customersRouter.get('/lookup', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Must provide phone or lineUserId' });
     }
 
-    const customer = await req.tenantPrisma.customer.findFirst({
+    const customer = await req.tenantPrisma!.customer.findFirst({
       where: {
         OR: [
           phone ? { phone: String(phone).trim() } : undefined,
@@ -81,7 +81,7 @@ customersRouter.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'กรุณากรอกชื่อและเบอร์โทรศัพท์' });
     }
 
-    const existing = await req.tenantPrisma.customer.findUnique({
+    const existing = await req.tenantPrisma!.customer.findUnique({
       where: { phone: String(phone).trim() },
     });
 
@@ -89,7 +89,7 @@ customersRouter.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'เบอร์โทรศัพท์นี้ลงทะเบียนเป็นสมาชิกอยู่แล้ว' });
     }
 
-    const customer = await req.tenantPrisma.customer.create({
+    const customer = await req.tenantPrisma!.customer.create({
       data: {
         tenantId: req.tenantId || 'default',
         name,
@@ -117,7 +117,7 @@ customersRouter.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name, phone, email, lineUserId, lineDisplayName, notes } = req.body;
 
-    const customer = await req.tenantPrisma.customer.update({
+    const customer = await req.tenantPrisma!.customer.update({
       where: { id },
       data: {
         name,
@@ -149,17 +149,17 @@ customersRouter.post('/:id/points', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'กรุณาระบุจำนวนแต้มที่ต้องการปรับปรุง' });
     }
 
-    const customer = await req.tenantPrisma.customer.findUnique({ where: { id } });
+    const customer = await req.tenantPrisma!.customer.findUnique({ where: { id } });
     if (!customer) return res.status(404).json({ message: 'ไม่พบข้อมูลสมาชิก' });
 
     const newPoints = Math.max(0, customer.points + Number(pointsChange));
 
-    const [updatedCustomer, tx] = await req.tenantPrisma.$transaction([
-      req.tenantPrisma.customer.update({
+    const [updatedCustomer] = await req.tenantPrisma!.$transaction([
+      req.tenantPrisma!.customer.update({
         where: { id },
         data: { points: newPoints },
       }),
-      req.tenantPrisma.pointTransaction.create({
+      req.tenantPrisma!.pointTransaction.create({
         data: {
           tenantId: req.tenantId || 'default',
           customerId: id,
@@ -174,7 +174,7 @@ customersRouter.post('/:id/points', async (req: Request, res: Response) => {
     // Send LINE Push notification if lineUserId is set
     if (updatedCustomer.lineUserId) {
       const msg = `🎉 สมาชิก ${updatedCustomer.name}\nมีการปรับแต้มสะสม: ${pointsChange > 0 ? '+' : ''}${pointsChange} แต้ม\nแต้มสะสมคงเหลือ: ${newPoints} แต้ม`;
-      smsService.sendAlert('realtimeSales' as any, msg, req.tenantPrisma);
+      smsService.sendAlert('realtimeSales' as any, msg, req.tenantPrisma!);
     }
 
     res.json(updatedCustomer);
@@ -196,7 +196,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'ไม่พบ Claim Token' });
     }
 
-    const bill = await req.tenantPrisma.bill.findUnique({
+    const bill = await req.tenantPrisma!.bill.findUnique({
       where: { claimToken: String(claimToken).trim() },
     });
 
@@ -211,7 +211,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
     const earned = bill.pointsEarned > 0 ? bill.pointsEarned : Math.floor(Number(bill.totalAmount) / 100);
 
     // Find or create customer
-    let customer = await req.tenantPrisma.customer.findFirst({
+    let customer = await req.tenantPrisma!.customer.findFirst({
       where: {
         OR: [
           phone ? { phone: String(phone).trim() } : undefined,
@@ -221,7 +221,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
     });
 
     if (!customer) {
-      customer = await req.tenantPrisma.customer.create({
+      customer = await req.tenantPrisma!.customer.create({
         data: {
           tenantId: req.tenantId || 'default',
           name: name || (phone ? `ลูกค้า ${phone}` : 'สมาชิก LINE'),
@@ -233,8 +233,8 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
 
     const newPoints = customer.points + earned;
 
-    await req.tenantPrisma.$transaction([
-      req.tenantPrisma.customer.update({
+    await req.tenantPrisma!.$transaction([
+      req.tenantPrisma!.customer.update({
         where: { id: customer.id },
         data: {
           points: newPoints,
@@ -242,7 +242,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
           ...(lineUserId ? { lineUserId } : {}),
         },
       }),
-      req.tenantPrisma.pointTransaction.create({
+      req.tenantPrisma!.pointTransaction.create({
         data: {
           tenantId: req.tenantId || 'default',
           customerId: customer.id,
@@ -253,7 +253,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
           description: `สแกน QR Code รับแต้มจากบิล ${bill.billNumber}`,
         },
       }),
-      req.tenantPrisma.bill.update({
+      req.tenantPrisma!.bill.update({
         where: { id: bill.id },
         data: {
           isPointsClaimed: true,
@@ -265,7 +265,7 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
     // Send LINE Push if lineUserId exists
     if (lineUserId || customer.lineUserId) {
       const lineMsg = `🎉 สแกน QR สะสมแต้มสำเร็จ!\n🧾 บิลเลขที่: ${bill.billNumber}\n✨ ได้รับแต้มเพิ่ม: +${earned} แต้ม\n💎 แต้มสะสมคงเหลือ: ${newPoints} แต้ม`;
-      smsService.sendAlert('realtimeSales' as any, lineMsg, req.tenantPrisma);
+      smsService.sendAlert('realtimeSales' as any, lineMsg, req.tenantPrisma!);
     }
 
     res.json({
@@ -279,4 +279,3 @@ customersRouter.post('/claim-qr', async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message || 'Error claiming points' });
   }
 });
-
