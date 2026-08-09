@@ -226,32 +226,34 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="store" className="space-y-6">
-        <TabsList className="grid grid-cols-2 lg:grid-cols-6 h-auto gap-2">
-          <TabsTrigger value="store" className="flex items-center gap-2">
-            <Store className="h-4 w-4" />
-            <span className="hidden sm:inline">ข้อมูลร้าน</span>
-          </TabsTrigger>
-          <TabsTrigger value="pos" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">POS</span>
-          </TabsTrigger>
-          <TabsTrigger value="payment" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">การชำระเงิน</span>
-          </TabsTrigger>
-          <TabsTrigger value="sms" className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">LINE BOT</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">แจ้งเตือน</span>
-          </TabsTrigger>
-          <TabsTrigger value="data" className="flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            <span className="hidden sm:inline">จัดการข้อมูล</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto pb-1">
+          <TabsList className="inline-flex w-max min-w-full justify-start h-auto p-1 gap-1.5 bg-muted/60">
+            <TabsTrigger value="store" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Store className="h-4 w-4" />
+              <span>ข้อมูลร้าน</span>
+            </TabsTrigger>
+            <TabsTrigger value="pos" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Receipt className="h-4 w-4" />
+              <span>POS</span>
+            </TabsTrigger>
+            <TabsTrigger value="payment" className="flex items-center gap-2 text-xs sm:text-sm">
+              <CreditCard className="h-4 w-4" />
+              <span>การชำระเงิน</span>
+            </TabsTrigger>
+            <TabsTrigger value="sms" className="flex items-center gap-2 text-xs sm:text-sm">
+              <MessageSquare className="h-4 w-4" />
+              <span>LINE BOT</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Bell className="h-4 w-4" />
+              <span>แจ้งเตือน</span>
+            </TabsTrigger>
+            <TabsTrigger value="data" className="flex items-center gap-2 text-xs sm:text-sm">
+              <Database className="h-4 w-4" />
+              <span>จัดการข้อมูล</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Store Settings */}
         <TabsContent value="store" className="space-y-6">

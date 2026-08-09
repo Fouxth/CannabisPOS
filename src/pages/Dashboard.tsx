@@ -249,7 +249,7 @@ export default function Dashboard() {
             <CardDescription>แสดงยอดขายและจำนวนรายการในแต่ละชั่วโมง</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[220px] sm:h-[300px]">
+            <div className="h-[220px] sm:h-[300px] w-full min-w-0 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dashboard.salesByHour}>
                   <defs>

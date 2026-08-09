@@ -417,13 +417,15 @@ export default function Reports() {
             </div>
 
             <Tabs defaultValue="ai" className="space-y-6">
-                <TabsList className="grid w-full max-w-lg grid-cols-3">
-                    <TabsTrigger value="ai" className="flex items-center gap-2">
-                        AI Advisor
-                    </TabsTrigger>
-                    <TabsTrigger value="business">Business Insights</TabsTrigger>
-                    <TabsTrigger value="financial">Financial Statement</TabsTrigger>
-                </TabsList>
+                <div className="w-full overflow-x-auto pb-1">
+                    <TabsList className="inline-flex w-max min-w-full justify-start h-auto p-1 gap-1 bg-muted/60">
+                        <TabsTrigger value="ai" className="flex items-center gap-2 text-xs sm:text-sm">
+                            AI Advisor
+                        </TabsTrigger>
+                        <TabsTrigger value="business" className="text-xs sm:text-sm">Business Insights</TabsTrigger>
+                        <TabsTrigger value="financial" className="text-xs sm:text-sm">Financial Statement</TabsTrigger>
+                    </TabsList>
+                </div>
 
                 {/* AI Advisor Tab */}
                 <TabsContent value="ai" className="space-y-6">
@@ -853,37 +855,39 @@ export default function Reports() {
                                 <CardTitle>แนวโน้มยอดขายและกำไร</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <AreaChart data={reportsData.monthlyBreakdown || []}>
-                                        <defs>
-                                            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                            </linearGradient>
-                                            <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.35)" />
-                                        <XAxis dataKey="month" axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                                        <YAxis axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: 'hsl(var(--popover))',
-                                                border: '1px solid hsl(var(--border))',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                            }}
-                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
-                                            formatter={(value) => `฿${formatCurrency(Number(value))}`}
-                                        />
-                                        <Legend />
-                                        <Area type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2.5} fill="url(#revenueGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }} animationDuration={300} />
-                                        <Area type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2.5} fill="url(#profitGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }} animationDuration={300} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                                <div className="w-full min-w-0 overflow-hidden h-[220px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={reportsData.monthlyBreakdown || []}>
+                                            <defs>
+                                                <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.35)" />
+                                            <XAxis dataKey="month" axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                            <YAxis axisLine={false} tickLine={false} stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(value) => `฿${(value / 1000).toFixed(0)}k`} />
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: 'hsl(var(--popover))',
+                                                    border: '1px solid hsl(var(--border))',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                                }}
+                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
+                                                formatter={(value) => `฿${formatCurrency(Number(value))}`}
+                                            />
+                                            <Legend />
+                                            <Area type="monotone" dataKey="revenue" stroke="#10b981" name="ยอดขาย" strokeWidth={2.5} fill="url(#revenueGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#10b981" }} animationDuration={300} />
+                                            <Area type="monotone" dataKey="profit" stroke="#3b82f6" name="กำไร" strokeWidth={2.5} fill="url(#profitGradient)" activeDot={{ r: 5, strokeWidth: 0, fill: "#3b82f6" }} animationDuration={300} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -893,37 +897,39 @@ export default function Reports() {
                                 <CardTitle>สัดส่วนยอดขายตามหมวดหมู่</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <ResponsiveContainer width="100%" height={220}>
-                                    <PieChart>
-                                        <Pie
-                                            data={reportsData.categoryBreakdown || []}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={false}
-                                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            fill="#8884d8"
-                                            dataKey="value"
-                                            animationDuration={300}
-                                        >
-                                            {(reportsData.categoryBreakdown || []).map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: 'hsl(var(--popover))',
-                                                border: '1px solid hsl(var(--border))',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                            }}
-                                            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                            labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
-                                            formatter={(value) => `฿${formatCurrency(Number(value))}`}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                                <div className="w-full min-w-0 overflow-hidden h-[220px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={reportsData.categoryBreakdown || []}
+                                                cx="50%"
+                                                cy="50%"
+                                                labelLine={false}
+                                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                fill="#8884d8"
+                                                dataKey="value"
+                                                animationDuration={300}
+                                            >
+                                                {(reportsData.categoryBreakdown || []).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: 'hsl(var(--popover))',
+                                                    border: '1px solid hsl(var(--border))',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                                                }}
+                                                itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                                labelStyle={{ color: 'hsl(var(--muted-foreground))', fontWeight: 600 }}
+                                                formatter={(value) => `฿${formatCurrency(Number(value))}`}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
