@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, UserPlus, Phone, Award, History, Edit, Plus, Minus, MessageSquare } from 'lucide-react';
+import { Search, UserPlus, Phone, Award, Edit, Plus, Minus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -21,8 +21,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [showPointsDialog, setShowPointsDialog] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [editCustomer, setEditCustomer] = useState<any | null>(null);
   const [pointsChange, setPointsChange] = useState('');
   const [pointsReason, setPointsReason] = useState('');
 
@@ -42,6 +44,19 @@ export default function Customers() {
     },
     onError: (err: any) => {
       toast.error(err.message || 'เกิดข้อผิดพลาดในการสร้างสมาชิก');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => api.updateCustomer(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('อัปเดตข้อมูลสมาชิกสำเร็จ');
+      setShowEditDialog(false);
+      setEditCustomer(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'เกิดข้อผิดพลาดในการอัปเดตสมาชิก');
     },
   });
 
@@ -72,6 +87,21 @@ export default function Customers() {
       notes: String(formData.get('notes') || '') || undefined,
     };
     createMutation.mutate(data);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editCustomer) return;
+    const formData = new FormData(e.currentTarget);
+    const data = {
+      name: String(formData.get('name') || ''),
+      phone: String(formData.get('phone') || ''),
+      email: String(formData.get('email') || '') || undefined,
+      lineUserId: String(formData.get('lineUserId') || '') || undefined,
+      lineDisplayName: String(formData.get('lineDisplayName') || '') || undefined,
+      notes: String(formData.get('notes') || '') || undefined,
+    };
+    updateMutation.mutate({ id: editCustomer.id, data });
   };
 
   const handlePointsSubmit = (e: React.FormEvent) => {
@@ -178,6 +208,15 @@ export default function Customers() {
                   >
                     <Plus className="h-3.5 w-3.5 text-success" /> / <Minus className="h-3.5 w-3.5 text-destructive" /> ปรับแต้ม
                   </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1 px-3"
+                    onClick={() => { setEditCustomer(c); setShowEditDialog(true); }}
+                  >
+                    <Edit className="h-3.5 w-3.5" /> แก้ไข
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -193,25 +232,25 @@ export default function Customers() {
           </DialogHeader>
           <form onSubmit={handleAddSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">ชื่อ-นามสกุล / ชื่อเล่น *</Label>
-              <Input id="name" name="name" placeholder="เช่น คุณสมชาย (GreenHouse)" required />
+              <Label htmlFor="add_name">ชื่อ-นามสกุล / ชื่อเล่น *</Label>
+              <Input id="add_name" name="name" placeholder="เช่น คุณสมชาย (GreenHouse)" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">เบอร์โทรศัพท์ *</Label>
-              <Input id="phone" name="phone" placeholder="0812345678" required />
+              <Label htmlFor="add_phone">เบอร์โทรศัพท์ *</Label>
+              <Input id="add_phone" name="phone" placeholder="0812345678" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lineDisplayName">ชื่อใน LINE (ถ้ามี)</Label>
-              <Input id="lineDisplayName" name="lineDisplayName" placeholder="เช่น Somchai_Line" />
+              <Label htmlFor="add_lineDisplayName">ชื่อใน LINE (ถ้ามี)</Label>
+              <Input id="add_lineDisplayName" name="lineDisplayName" placeholder="เช่น Somchai_Line" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lineUserId">LINE User ID (สำหรับส่งข้อความแต้มอัตโนมัติ)</Label>
-              <Input id="lineUserId" name="lineUserId" placeholder="U1234567890abcdef..." />
+              <Label htmlFor="add_lineUserId">LINE User ID (สำหรับส่งข้อความแต้มอัตโนมัติ)</Label>
+              <Input id="add_lineUserId" name="lineUserId" placeholder="U1234567890abcdef..." />
               <p className="text-[11px] text-muted-foreground">สามารถรับได้เมื่อลูกค้าทัก LINE OA ของร้าน</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">หมายเหตุเพิ่มเติม</Label>
-              <Textarea id="notes" name="notes" placeholder="เช่น ลูกค้าประจำ ชอบสายพันธุ์ Sativa" rows={2} />
+              <Label htmlFor="add_notes">หมายเหตุเพิ่มเติม</Label>
+              <Textarea id="add_notes" name="notes" placeholder="เช่น ลูกค้าประจำ ชอบสายพันธุ์ Sativa" rows={2} />
             </div>
             <DialogFooter className="pt-3">
               <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
@@ -222,6 +261,47 @@ export default function Customers() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">แก้ไขข้อมูลสมาชิก</DialogTitle>
+          </DialogHeader>
+          {editCustomer && (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit_name">ชื่อ-นามสกุล / ชื่อเล่น *</Label>
+                <Input id="edit_name" name="name" defaultValue={editCustomer.name} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_phone">เบอร์โทรศัพท์ *</Label>
+                <Input id="edit_phone" name="phone" defaultValue={editCustomer.phone} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_lineDisplayName">ชื่อใน LINE</Label>
+                <Input id="edit_lineDisplayName" name="lineDisplayName" defaultValue={editCustomer.lineDisplayName || ''} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_lineUserId">LINE User ID</Label>
+                <Input id="edit_lineUserId" name="lineUserId" defaultValue={editCustomer.lineUserId || ''} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_notes">หมายเหตุเพิ่มเติม</Label>
+                <Textarea id="edit_notes" name="notes" defaultValue={editCustomer.notes || ''} rows={2} />
+              </div>
+              <DialogFooter className="pt-3">
+                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" className="gradient-primary text-primary-foreground">
+                  บันทึกการแก้ไข
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 
