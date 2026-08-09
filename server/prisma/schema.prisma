@@ -179,6 +179,8 @@ model Bill {
   discountPercent Decimal    @db.Decimal(5, 2) @default(0)
   taxAmount       Decimal    @db.Decimal(10, 2) @default(0)
   totalAmount     Decimal    @db.Decimal(10, 2)
+  pointsEarned    Int        @default(0)
+  pointsRedeemed  Int        @default(0)
   paymentMethod   String
   amountReceived  Decimal    @db.Decimal(10, 2)
   changeAmount    Decimal    @db.Decimal(10, 2)
@@ -189,7 +191,9 @@ model Bill {
 
   // Relations
   user            User       @relation(fields: [userId], references: [id])
+  customer        Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items           BillItem[]
+  pointTransactions PointTransaction[]
 
   @@index([tenantId])
   @@map("bills")
@@ -398,4 +402,57 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@index([createdAt])
+}
+
+// Customer Model
+model Customer {
+  id              String            @id @default(uuid())
+  tenantId        String            @default("default")
+  name            String
+  phone           String            @unique
+  email           String?
+  lineUserId      String?
+  lineDisplayName String?
+  points          Int               @default(0)
+  totalSpent      Decimal           @db.Decimal(10, 2) @default(0)
+  notes           String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  bills           Bill[]
+  pointTransactions PointTransaction[]
+
+  @@map("customers")
+  @@index([tenantId])
+  @@index([phone])
+  @@index([lineUserId])
+}
+
+// Point Transaction Model
+model PointTransaction {
+  id           String             @id @default(uuid())
+  tenantId     String             @default("default")
+  customerId   String
+  billId       String?
+  type         PointTxType
+  pointsChange Int
+  balanceAfter Int
+  description  String?
+  createdAt    DateTime           @default(now())
+
+  // Relations
+  customer     Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  bill         Bill?              @relation(fields: [billId], references: [id], onDelete: SetNull)
+
+  @@map("point_transactions")
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([billId])
+}
+
+enum PointTxType {
+  EARN
+  REDEEM
+  ADJUST
 }

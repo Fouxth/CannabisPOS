@@ -27,6 +27,8 @@ import { paymentMethodsRouter } from './routes/paymentMethods';
 import { promotionsRouter } from './routes/promotions';
 import { auditLogsRouter } from './routes/auditLogs';
 import { analyticsRouter } from './routes/analytics';
+import { customersRouter } from './routes/customers';
+import { printerRouter } from './routes/printer';
 import { getUserPermissions, requirePermission } from './middleware/permissions';
 import { backupRouter } from './routes/backup';
 
@@ -109,6 +111,8 @@ app.use('/api/payment-methods', paymentMethodsRouter);
 app.use('/api/promotions', promotionsRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/customers', customersRouter);
+app.use('/api/printer', printerRouter);
 app.get('/api/permissions', getUserPermissions);
 app.use('/api/backup', backupRouter);
 

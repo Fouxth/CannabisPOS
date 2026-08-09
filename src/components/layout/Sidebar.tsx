@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   Leaf,
   Receipt,
-  TrendingDown
+  TrendingDown,
+  Award
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { icon: BarChart3, label: 'รายงาน', path: '/reports', requiredPermission: 'view_sales_report' },
   { icon: TrendingDown, label: 'รายจ่าย', path: '/expenses', requiredPermission: 'view_sales_report' },
   { icon: Receipt, label: 'บิล', path: '/bills', requiredPermission: 'view_bills' },
+  { icon: Award, label: 'สมาชิก & แต้ม', path: '/customers', requiredPermission: 'view_bills' },
   { icon: Users, label: 'พนักงาน', path: '/users', requiredPermission: 'view_users' },
   { icon: Settings, label: 'ตั้งค่า', path: '/settings', requiredPermission: 'view_settings' },
 ];

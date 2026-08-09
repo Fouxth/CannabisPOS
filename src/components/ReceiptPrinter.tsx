@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Printer } from 'lucide-react';
+import { Printer, Bluetooth, Usb } from 'lucide-react';
+import { buildEscPosReceipt, printViaBluetooth, printViaWebUSB } from '@/lib/thermalPrinter';
+import { toast } from 'sonner';
 
 interface BillItem {
     productName: string;
@@ -26,6 +28,10 @@ interface ReceiptData {
     cashierName: string;
     createdAt: string;
     promotionCode?: string;
+    customerName?: string;
+    customerPhone?: string;
+    pointsEarned?: number;
+    currentPointsBalance?: number;
 }
 
 interface ReceiptPrinterProps {
@@ -35,6 +41,34 @@ interface ReceiptPrinterProps {
 
 export default function ReceiptPrinter({ data, onPrint }: ReceiptPrinterProps) {
     const receiptRef = useRef<HTMLDivElement>(null);
+
+    const handleBluetoothPrint = async () => {
+        try {
+            toast.loading('กำลังเชื่อมต่อเครื่องพิมพ์ Bluetooth ESC/POS...');
+            const bytes = buildEscPosReceipt(data, { type: 'bluetooth', paperWidth: 80, autoCut: true, autoKickDrawer: true });
+            await printViaBluetooth(bytes);
+            toast.dismiss();
+            toast.success('ส่งคำสั่งพิมพ์ไปยังเครื่องพิมพ์ Bluetooth เรียบร้อยแล้ว');
+            if (onPrint) onPrint();
+        } catch (error: any) {
+            toast.dismiss();
+            toast.error(error.message || 'ไม่สามารถพิมพ์ผ่าน Bluetooth ได้');
+        }
+    };
+
+    const handleUsbPrint = async () => {
+        try {
+            toast.loading('กำลังเชื่อมต่อเครื่องพิมพ์ USB ESC/POS...');
+            const bytes = buildEscPosReceipt(data, { type: 'webusb', paperWidth: 80, autoCut: true, autoKickDrawer: true });
+            await printViaWebUSB(bytes);
+            toast.dismiss();
+            toast.success('ส่งคำสั่งพิมพ์ไปยังเครื่องพิมพ์ USB เรียบร้อยแล้ว');
+            if (onPrint) onPrint();
+        } catch (error: any) {
+            toast.dismiss();
+            toast.error(error.message || 'ไม่สามารถพิมพ์ผ่าน USB ได้');
+        }
+    };
 
     const handlePrint = () => {
         if (onPrint) onPrint();
@@ -249,11 +283,21 @@ export default function ReceiptPrinter({ data, onPrint }: ReceiptPrinterProps) {
                 </div>
             </div>
 
-            {/* Print button */}
-            <Button onClick={handlePrint} className="w-full">
-                <Printer className="mr-2 h-4 w-4" />
-                พิมพ์ใบเสร็จ
-            </Button>
+            {/* Print Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <Button onClick={handleBluetoothPrint} variant="outline" className="w-full text-xs">
+                    <Bluetooth className="mr-1.5 h-3.5 w-3.5 text-blue-500" />
+                    พิมพ์ Bluetooth ESC/POS
+                </Button>
+                <Button onClick={handleUsbPrint} variant="outline" className="w-full text-xs">
+                    <Usb className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
+                    พิมพ์ USB ESC/POS
+                </Button>
+                <Button onClick={handlePrint} className="w-full text-xs gradient-primary text-primary-foreground">
+                    <Printer className="mr-1.5 h-3.5 w-3.5" />
+                    พิมพ์ปกติ (Browser)
+                </Button>
+            </div>
         </div>
     );
 }

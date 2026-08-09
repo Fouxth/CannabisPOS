@@ -211,6 +211,8 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                     discountPercent: discountPercent ?? 0,
                     taxAmount: taxAmount ?? 0,
                     totalAmount,
+                    pointsEarned: req.body.pointsEarned ?? 0,
+                    pointsRedeemed: req.body.pointsRedeemed ?? 0,
                     paymentMethod: normalizedMethod,
                     amountReceived: amountReceived ?? totalAmount,
                     changeAmount: changeAmount ?? 0,
@@ -221,6 +223,60 @@ router.post('/', requirePermission('CREATE_SALE'), async (req, res) => {
                     },
                 },
             });
+
+            // Handle Customer Loyalty Points Earn & Redeem
+            if (customerId) {
+                const customer = await tx.customer.findUnique({ where: { id: customerId } });
+                if (customer) {
+                    let currentPoints = customer.points;
+                    const redeemed = Number(req.body.pointsRedeemed || 0);
+                    const earned = Number(req.body.pointsEarned || Math.floor(Number(totalAmount) / 100));
+
+                    if (redeemed > 0) {
+                        currentPoints = Math.max(0, currentPoints - redeemed);
+                        await tx.pointTransaction.create({
+                            data: {
+                                tenantId: req.tenantId!,
+                                customerId,
+                                billId: bill.id,
+                                type: 'REDEEM',
+                                pointsChange: -redeemed,
+                                balanceAfter: currentPoints,
+                                description: `ใช้แต้มเป็นส่วนลดบิล ${billNumber}`,
+                            },
+                        });
+                    }
+
+                    if (earned > 0) {
+                        currentPoints += earned;
+                        await tx.pointTransaction.create({
+                            data: {
+                                tenantId: req.tenantId!,
+                                customerId,
+                                billId: bill.id,
+                                type: 'EARN',
+                                pointsChange: earned,
+                                balanceAfter: currentPoints,
+                                description: `ได้รับแต้มจากการซื้อสินค้าบิล ${billNumber}`,
+                            },
+                        });
+                    }
+
+                    const updatedCustomer = await tx.customer.update({
+                        where: { id: customerId },
+                        data: {
+                            points: currentPoints,
+                            totalSpent: { increment: totalAmount },
+                        },
+                    });
+
+                    // Send LINE notification if lineUserId exists
+                    if (updatedCustomer.lineUserId) {
+                        const lineMsg = `🎉 ขอบคุณที่ใช้บริการค่ะ คุณ ${updatedCustomer.name}!\n🧾 บิลเลขที่: ${billNumber}\nยอดชำระ: ฿${Number(totalAmount).toLocaleString()}\n${earned > 0 ? `✨ ได้รับแต้มเพิ่ม: +${earned} แต้ม\n` : ''}${redeemed > 0 ? `🏷️ ใช้แต้มส่วนลด: -${redeemed} แต้ม\n` : ''}💎 แต้มสะสมคงเหลือ: ${updatedCustomer.points} แต้ม`;
+                        smsService.sendAlert('realtimeSales' as any, lineMsg, req.tenantPrisma!);
+                    }
+                }
+            }
 
             const fullBill = await tx.bill.findUnique({
                 where: { id: bill.id },

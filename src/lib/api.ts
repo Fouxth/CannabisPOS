@@ -274,6 +274,36 @@ export const api = {
     request<{ message: string }>(`/management/tenants/${id}`, {
       method: 'DELETE',
     }),
+  // Customer & Loyalty API
+  getCustomers: (search?: string) => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request<any[]>(`/customers${params}`);
+  },
+  lookupCustomer: (params: { phone?: string; lineUserId?: string }) => {
+    const q = new URLSearchParams(params as Record<string, string>).toString();
+    return request<any>(`/customers/lookup?${q}`);
+  },
+  createCustomer: (data: any) =>
+    request<any>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCustomer: (id: string, data: any) =>
+    request<any>(`/customers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  adjustCustomerPoints: (id: string, data: { pointsChange: number; reason?: string }) =>
+    request<any>(`/customers/${id}/points`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  // Network Printer API
+  sendNetworkPrint: (data: { ipAddress: string; port?: number; base64Data: string }) =>
+    request<{ message: string }>('/printer/network-print', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export { API_BASE_URL };

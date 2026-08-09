@@ -69,6 +69,11 @@ export default function POS() {
   const [currentBill, setCurrentBill] = useState<Bill | null>(null);
   const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
 
+  // Customer Loyalty State
+  const [memberPhone, setMemberPhone] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [pointsRedeemed, setPointsRedeemed] = useState(0);
+
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -211,28 +216,34 @@ export default function POS() {
     console.log('Payment Debug - User:', user);
     console.log('Payment Debug - User ID:', user?.id);
 
-    const payload: CheckoutPayload = {
+    const pointsEarned = Math.floor(total / 100);
+
+    const payload: CheckoutPayload & { customerId?: string; customerName?: string; pointsEarned?: number; pointsRedeemed?: number } = {
       userId: user?.id || '', // Use authenticated user's ID
       paymentMethod: selectedPaymentMethod,
       subtotal,
-      discountAmount: discount,
+      discountAmount: discount + pointsRedeemed,
       discountPercent: globalDiscountType === 'percent' ? globalDiscount : 0,
       surchargeAmount: surcharge,
       surchargePercent: globalSurchargeType === 'percent' ? globalSurcharge : 0,
       taxAmount: tax,
-      totalAmount: total,
-      amountReceived: selectedPaymentMethod === 'cash' ? amountReceived : total,
-      changeAmount: selectedPaymentMethod === 'cash' ? Math.max(change, 0) : 0,
+      totalAmount: Math.max(0, total - pointsRedeemed),
+      amountReceived: selectedPaymentMethod === 'cash' ? amountReceived : Math.max(0, total - pointsRedeemed),
+      changeAmount: selectedPaymentMethod === 'cash' ? Math.max(amountReceived - Math.max(0, total - pointsRedeemed), 0) : 0,
       items: billItems,
+      customerId: selectedCustomer?.id,
+      customerName: selectedCustomer?.name,
+      pointsEarned,
+      pointsRedeemed,
     };
 
     console.log('Payment Debug - Payload:', payload);
 
     try {
-      const response = await checkoutMutation.mutateAsync(payload);
+      const response = await checkoutMutation.mutateAsync(payload as any);
 
       toast.success('ชำระเงินสำเร็จ!', {
-        description: `ยอดรวม ${formatCurrency(total)} บาท`,
+        description: `ยอดรวม ${formatCurrency(payload.totalAmount)} บาท${pointsEarned > 0 ? ` (ได้รับ +${pointsEarned} แต้ม)` : ''}`,
       });
 
       setCurrentBill(response.bill);
@@ -242,6 +253,9 @@ export default function POS() {
       setSelectedPaymentMethod('cash');
       setGlobalDiscount(0, 'percent');
       setGlobalSurcharge(0, 'percent');
+      setSelectedCustomer(null);
+      setMemberPhone('');
+      setPointsRedeemed(0);
       setShowBillDialog(true);
     } catch (error: any) {
       const message = error?.message || 'ชำระเงินไม่สำเร็จ กรุณาลองใหม่';
@@ -474,6 +488,70 @@ export default function POS() {
             )}
           </div>
         </CardHeader>
+
+        {/* Member Search & Loyalty Bar */}
+        <div className="px-4 pb-3 border-b border-border/50 bg-muted/20">
+          {!selectedCustomer ? (
+            <div className="flex gap-2">
+              <Input
+                placeholder="ค้นหาสมาชิกด้วยเบอร์โทร..."
+                value={memberPhone}
+                onChange={(e) => setMemberPhone(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (async () => {
+                  if (!memberPhone.trim()) return;
+                  try {
+                    const c = await api.lookupCustomer({ phone: memberPhone.trim() });
+                    if (c) {
+                      setSelectedCustomer(c);
+                      toast.success(`พบสมาชิก: ${c.name} (${c.points} แต้ม)`);
+                    } else {
+                      toast.error('ไม่พบสมาชิกเบอร์นี้');
+                    }
+                  } catch {
+                    toast.error('เกิดข้อผิดพลาดในการค้นหา');
+                  }
+                })()}
+                className="h-8 text-xs flex-1"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs px-3"
+                onClick={async () => {
+                  if (!memberPhone.trim()) return;
+                  try {
+                    const c = await api.lookupCustomer({ phone: memberPhone.trim() });
+                    if (c) {
+                      setSelectedCustomer(c);
+                      toast.success(`พบสมาชิก: ${c.name} (${c.points} แต้ม)`);
+                    } else {
+                      toast.error('ไม่พบสมาชิกเบอร์นี้');
+                    }
+                  } catch {
+                    toast.error('เกิดข้อผิดพลาดในการค้นหา');
+                  }
+                }}
+              >
+                ค้นหา
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
+              <div>
+                <p className="font-bold text-emerald-600 dark:text-emerald-400">{selectedCustomer.name}</p>
+                <p className="text-[11px] text-muted-foreground">สะสม: <span className="font-bold text-foreground">{selectedCustomer.points} แต้ม</span> (จะได้ +{Math.floor(total / 100)} แต้ม)</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] text-destructive px-2"
+                onClick={() => { setSelectedCustomer(null); setPointsRedeemed(0); }}
+              >
+                ยกเลิก
+              </Button>
+            </div>
+          )}
+        </div>
 
         <ScrollArea className="flex-1 px-4">
           {cart.length === 0 ? (

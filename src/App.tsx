@@ -21,6 +21,7 @@ import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Promotions from "./pages/Promotions";
+import Customers from "./pages/Customers";
 import Suspended from "./pages/Suspended";
 import TenantDashboard from "./pages/admin/TenantDashboard";
 import TenantDetails from "./pages/admin/TenantDetails";
@@ -79,6 +80,7 @@ const App = () => (
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/bills" element={<Bills />} />
+                <Route path="/customers" element={<Customers />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/profile" element={<Profile />} />
