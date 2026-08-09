@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+import path from 'path';
+
 dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), 'server/.env') });
 
 import { tenantResolver } from './middleware/tenant';
 import { authenticateToken } from './middleware/auth';
@@ -46,16 +49,34 @@ app.use((req, res, next) => {
     next();
 });
 
-// Middleware
-const allowedOrigins = process.env.CORS_ORIGIN
+const envOrigins = process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(',').map(o => o.replace(/"/g, '').trim())
-    : ['https://cannabis-4th.vercel.app', 'http://localhost:8080', 'http://localhost:5173'];
+    : [];
+
+const defaultOrigins = [
+    'https://cannabis-4th.vercel.app',
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4200',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:5173'
+];
+
+const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins]));
 
 console.log('CORS Allowed Origins:', allowedOrigins);
 
 app.use(
     cors({
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            // Allow requests with no origin (like mobile apps, curl, postman, or same-origin)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin) || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+                return callback(null, true);
+            }
+            callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
     })
 );
