@@ -73,7 +73,7 @@ export default function POS() {
   const [memberPhone, setMemberPhone] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [pointsRedeemed, setPointsRedeemed] = useState(0);
-  const [enablePoints, setEnablePoints] = useState(true);
+  const [enablePoints, setEnablePoints] = useState(false);
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -507,18 +507,24 @@ export default function POS() {
               className={`h-6 text-[11px] px-2 font-bold transition-all ${
                 enablePoints
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'text-muted-foreground border-dashed'
+                  : 'text-amber-600 dark:text-amber-400 border-amber-500/40 bg-amber-500/10'
               }`}
               onClick={() => {
                 const next = !enablePoints;
                 setEnablePoints(next);
                 if (!next) setPointsRedeemed(0);
-                toast.info(next ? 'เปิดใช้งานสะสมแต้มสำหรับบิลนี้' : 'ปิดการสะสมแต้มสำหรับบิลนี้');
+                toast.info(next ? 'เปิดใช้งานสะสมแต้มสำหรับบิลนี้' : 'ปิดการสะสมแต้มสำหรับบิลนี้ (ระบบกำลังพัฒนา)');
               }}
             >
-              {enablePoints ? '✓ สะสมแต้ม (เปิด)' : '✕ ไม่สะสมแต้ม (ปิด)'}
+              {enablePoints ? '✓ สะสมแต้ม (เปิด)' : '🚧 กำลังพัฒนา (ปิด)'}
             </Button>
           </div>
+
+          {!enablePoints && (
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-700 dark:text-amber-300 text-center font-medium">
+              🚧 ระบบสะสมแต้มผ่าน LINE อยู่ระหว่างการพัฒนา
+            </div>
+          )}
 
           {enablePoints && (!selectedCustomer ? (
             <div className="flex gap-2">

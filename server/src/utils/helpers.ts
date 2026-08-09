@@ -45,7 +45,7 @@ export const DEFAULT_SETTINGS = {
         sound: true,
     },
     loyalty: {
-        enabled: true,
+        enabled: false,
         rewardThreshold: 10,
         rewardDescription: 'แลกรับของรางวัล 1 สิทธิ์',
         defaultProductEarnPoints: true,

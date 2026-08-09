@@ -128,6 +128,17 @@ export default function Customers() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Under Development Banner */}
+      <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-sm font-medium flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-base">🚧</span>
+          <span><strong>ระบบสะสมแต้มกำลังพัฒนา:</strong> ระบบสมาชิกและการสะสมแต้มผ่าน LINE อยู่ระหว่างการพัฒนาและปรับปรุงระบบเพิ่มเติม</span>
+        </div>
+        <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10 shrink-0">
+          Under Development
+        </Badge>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
