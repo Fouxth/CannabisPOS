@@ -38,7 +38,11 @@ const PORT = Number(process.env.PORT) || 3000;
 socketService.init(httpServer);
 
 app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+    res.on('finish', () => {
+        if (res.statusCode >= 400) {
+            console.error(`[ERROR REQUEST] ${req.method} ${req.url} - Status: ${res.statusCode} - Origin: ${req.headers.origin}`);
+        }
+    });
     next();
 });
 
