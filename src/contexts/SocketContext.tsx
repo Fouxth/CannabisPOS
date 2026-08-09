@@ -14,7 +14,7 @@ const SocketContext = createContext<SocketContextType>({
 
 export const useSocket = () => useContext(SocketContext);
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.VITE_API_URL ? new URL(import.meta.env.VITE_API_URL).origin : 'http://localhost:4200');
 
 export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user, isAuthenticated } = useAuth();
@@ -22,8 +22,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        if (isAuthenticated && user) {
-            const token = localStorage.getItem('token');
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+        if (isAuthenticated && user && token) {
             const newSocket = io(SOCKET_URL, {
                 auth: { token },
                 reconnectionAttempts: 5,

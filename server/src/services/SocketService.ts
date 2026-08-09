@@ -32,9 +32,14 @@ export class SocketService {
 
         // Middleware for Socket.IO authentication & tenant active verification
         this.io.use(async (socket, next) => {
-            const token =
+            let token =
                 socket.handshake.auth?.token ||
-                socket.handshake.headers.authorization?.split(' ')[1];
+                socket.handshake.headers.authorization?.split(' ')[1] ||
+                (socket.handshake.query?.token as string);
+
+            if (token && typeof token === 'string' && token.startsWith('Bearer ')) {
+                token = token.replace('Bearer ', '');
+            }
 
             if (!token) {
                 return next(new Error('Authentication error: Access token required'));
